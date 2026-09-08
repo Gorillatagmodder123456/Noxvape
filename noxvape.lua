@@ -85,6 +85,13 @@ local function tw(obj, props, dur)
     a:Play(); return a
 end
 
+local function safeCall(fn, ...)
+    if type(fn) ~= "function" then return true end
+    local ok, result = pcall(fn, ...)
+    if not ok then warn("[NoxLib]", result); return false, result end
+    return true, result
+end
+
 -- ─── Config ──────────────────────────────────────────────────────────────────
 local config = {
     version        = 1,
@@ -618,227 +625,289 @@ local function init()
                 kbBtn.Text="Press key..."; kbBtn.BackgroundColor3=Colors.Accent
             end)
 
-            -- Extra settings (sliders / textboxes)
+            -- Extra settings
             if type(extraSettings)=="table" then
                 for si,setting in ipairs(extraSettings) do
-                    if setting.type=="slider" then
-                        local fr=Instance.new("Frame"); fr.BackgroundTransparency=1
-                        fr.Size=UDim2.new(1,0,0,48); fr.LayoutOrder=10+si; fr.Parent=sf2
-                        local lbl=Instance.new("TextLabel"); lbl.BackgroundTransparency=1
-                        lbl.Size=UDim2.new(1,0,0,18); lbl.FontFace=UIFont; lbl.TextSize=14
-                        lbl.TextColor3=Colors.Text; lbl.TextXAlignment=Enum.TextXAlignment.Left
-                        lbl.Text=setting.name.." ("..math.floor(getSetting(catName,itemName,setting.key,setting.default))..")"; lbl.Parent=fr
-                        local sbg=Instance.new("Frame"); sbg.BackgroundColor3=Colors.ToggleOff
-                        sbg.BorderSizePixel=0; sbg.Position=UDim2.fromOffset(0,24)
-                        sbg.Size=UDim2.new(1,0,0,14); sbg.Parent=fr
-                        local cv=getSetting(catName,itemName,setting.key,setting.default)
-                        local pct=math.clamp((cv-setting.min)/(setting.max-setting.min),0,1)
-                        local sfill=Instance.new("Frame"); sfill.BackgroundColor3=Colors.Accent
-                        sfill.BorderSizePixel=0; sfill.Size=UDim2.new(pct,0,1,0); sfill.Parent=sbg
-                        local sknob=Instance.new("TextButton"); sknob.AutoButtonColor=false
-                        sknob.BackgroundColor3=Colors.Accent; sknob.BorderSizePixel=0
-                        sknob.AnchorPoint=Vector2.new(0.5,0.5); sknob.Position=UDim2.new(pct,0,0.5,0)
-                        sknob.Size=UDim2.fromOffset(12,16); sknob.Text=""; sknob.Parent=sbg
-                        local sdrag=false
+                    if type(setting)~="table" then
+                        continue
+                    end
+
+                    local settingType = tostring(setting.type or "")
+                    local settingName = tostring(setting.name or setting.key or ("Setting "..si))
+                    local settingKey = tostring(setting.key or setting.name or ("setting"..si))
+                    local order = 10 + si
+
+                    if settingType=="slider" then
+                        local min = tonumber(setting.min) or 0
+                        local max = tonumber(setting.max) or 100
+                        if max < min then min,max=max,min end
+
+                        local default = tonumber(setting.default)
+                        if default==nil then default=min end
+                        default=math.clamp(default,min,max)
+
+                        local cv=tonumber(getSetting(catName,itemName,settingKey,default)) or default
+                        cv=math.clamp(cv,min,max)
+
+                        local fr=Instance.new("Frame")
+                        fr.BackgroundTransparency=1
+                        fr.Size=UDim2.new(1,0,0,48)
+                        fr.LayoutOrder=order
+                        fr.Parent=sf2
+
+                        local lbl=Instance.new("TextLabel")
+                        lbl.BackgroundTransparency=1
+                        lbl.Size=UDim2.new(1,0,0,18)
+                        lbl.FontFace=UIFont
+                        lbl.TextSize=14
+                        lbl.TextColor3=Colors.Text
+                        lbl.TextXAlignment=Enum.TextXAlignment.Left
+                        lbl.Text=settingName.." ("..math.floor(cv+0.5)..")"
+                        lbl.Parent=fr
+
+                        local sbg=Instance.new("Frame")
+                        sbg.BackgroundColor3=Colors.ToggleOff
+                        sbg.BorderSizePixel=0
+                        sbg.Position=UDim2.fromOffset(0,24)
+                        sbg.Size=UDim2.new(1,0,0,14)
+                        sbg.Parent=fr
+
+                        local range=max-min
+                        local pct=(range==0) and 0 or math.clamp((cv-min)/range,0,1)
+
+                        local sfill=Instance.new("Frame")
+                        sfill.BackgroundColor3=Colors.Accent
+                        sfill.BorderSizePixel=0
+                        sfill.Size=UDim2.new(pct,0,1,0)
+                        sfill.Parent=sbg
+
+                        local sknob=Instance.new("TextButton")
+                        sknob.AutoButtonColor=false
+                        sknob.BackgroundColor3=Colors.Accent
+                        sknob.BorderSizePixel=0
+                        sknob.AnchorPoint=Vector2.new(0.5,0.5)
+                        sknob.Position=UDim2.new(pct,0,0.5,0)
+                        sknob.Size=UDim2.fromOffset(12,16)
+                        sknob.Text=""
+                        sknob.Parent=sbg
+
                         local function supdate(val)
-                            val=math.clamp(math.floor(val+0.5),setting.min,setting.max)
-                            setSetting(catName,itemName,setting.key,val)
-                            local p=math.clamp((val-setting.min)/(setting.max-setting.min),0,1)
-                            sfill.Size=UDim2.new(p,0,1,0); sknob.Position=UDim2.new(p,0,0.5,0)
-                            lbl.Text=setting.name.." ("..val..")"
+                            val=math.clamp(math.floor(val+0.5),min,max)
+                            setSetting(catName,itemName,settingKey,val)
+                            local p=(range==0) and 0 or math.clamp((val-min)/range,0,1)
+                            sfill.Size=UDim2.new(p,0,1,0)
+                            sknob.Position=UDim2.new(p,0,0.5,0)
+                            lbl.Text=settingName.." ("..val..")"
+                            safeCall(setting.onChanged or setting.action,val)
                         end
+
+                        local sdrag=false
                         sknob.MouseButton1Down:Connect(function() sdrag=true end)
                         sbg.InputBegan:Connect(function(inp)
                             if inp.UserInputType==Enum.UserInputType.MouseButton1 then
                                 sdrag=true
-                                local pos=UserInputService:GetMouseLocation().X-sbg.AbsolutePosition.X
-                                supdate(setting.min+math.clamp(pos/sbg.AbsoluteSize.X,0,1)*(setting.max-setting.min))
+                                local width=sbg.AbsoluteSize.X
+                                if width>0 then
+                                    local pos=UserInputService:GetMouseLocation().X-sbg.AbsolutePosition.X
+                                    supdate(min+math.clamp(pos/width,0,1)*range)
+                                end
                             end
                         end)
                         UserInputService.InputChanged:Connect(function(inp)
                             if not sdrag or inp.UserInputType~=Enum.UserInputType.MouseMovement then return end
                             if not sbg.Parent then return end
+                            local width=sbg.AbsoluteSize.X
+                            if width<=0 then return end
                             local pos=UserInputService:GetMouseLocation().X-sbg.AbsolutePosition.X
-                            supdate(setting.min+math.clamp(pos/sbg.AbsoluteSize.X,0,1)*(setting.max-setting.min))
+                            supdate(min+math.clamp(pos/width,0,1)*range)
                         end)
                         UserInputService.InputEnded:Connect(function(inp)
                             if inp.UserInputType==Enum.UserInputType.MouseButton1 then sdrag=false end
                         end)
 
-                        -- Dropdown
-                        elseif setting.type=="dropdown" then
-                            local options = type(setting.options)=="table" and setting.options or {}
-                            local default = setting.default
-                            if default==nil then default=options[1] or "None" end
-                            local current = getSetting(catName,itemName,setting.key,default)
+                    elseif settingType=="dropdown" then
+                        local options=type(setting.options)=="table" and setting.options or {}
+                        local default=setting.default
+                        if default==nil then default=options[1] or "None" end
+                        local current=getSetting(catName,itemName,settingKey,default)
 
-                            local fr=Instance.new("Frame")
-                            fr.BackgroundTransparency=1
-                            fr.BorderSizePixel=0
-                            fr.Size=UDim2.new(1,0,0,34)
-                            fr.LayoutOrder=10+si
-                            fr.ZIndex=20000+si
-                            fr.Parent=sf2
+                        local frame=Instance.new("Frame")
+                        frame.BackgroundTransparency=1
+                        frame.BorderSizePixel=0
+                        frame.Size=UDim2.new(1,0,0,38)
+                        frame.LayoutOrder=order
+                        frame.Parent=sf2
 
-                            local lbl=Instance.new("TextLabel")
-                            lbl.BackgroundTransparency=1
-                            lbl.Size=UDim2.new(0.45,0,1,0)
-                            lbl.FontFace=UIFont; lbl.TextSize=14
-                            lbl.TextColor3=Colors.Text
-                            lbl.TextXAlignment=Enum.TextXAlignment.Left
-                            lbl.TextTruncate=Enum.TextTruncate.AtEnd
-                            lbl.Text=setting.name or setting.key or "Dropdown"
-                            lbl.ZIndex=20001+si; lbl.Parent=fr
+                        local label=Instance.new("TextLabel")
+                        label.BackgroundTransparency=1
+                        label.Size=UDim2.new(0.5,0,1,0)
+                        label.FontFace=UIFont
+                        label.TextSize=16
+                        label.TextColor3=Colors.Text
+                        label.TextXAlignment=Enum.TextXAlignment.Left
+                        label.Text=settingName
+                        label.Parent=frame
 
-                            local dropdown=Instance.new("TextButton")
-                            dropdown.AutoButtonColor=false
+                        local dropdown=Instance.new("TextButton")
+                        dropdown.AutoButtonColor=false
+                        dropdown.BackgroundColor3=Colors.Action
+                        dropdown.BorderSizePixel=0
+                        dropdown.AnchorPoint=Vector2.new(1,0)
+                        dropdown.Position=UDim2.new(1,0,0,0)
+                        dropdown.Size=UDim2.fromOffset(120,38)
+                        dropdown.FontFace=UIFont
+                        dropdown.TextSize=15
+                        dropdown.TextColor3=Colors.Text
+                        dropdown.TextTruncate=Enum.TextTruncate.AtEnd
+                        dropdown.Text=tostring(current)
+                        dropdown.ZIndex=20050
+                        dropdown.Parent=frame
+
+                        local dropdownContainer=Instance.new("Frame")
+                        dropdownContainer.Name="DropdownOptions"
+                        dropdownContainer.BackgroundColor3=Colors.Setting
+                        dropdownContainer.BackgroundTransparency=0
+                        dropdownContainer.BorderSizePixel=0
+                        dropdownContainer.Size=UDim2.new(1,0,0,0)
+                        dropdownContainer.AutomaticSize=Enum.AutomaticSize.Y
+                        dropdownContainer.LayoutOrder=order+100
+                        dropdownContainer.Visible=false
+                        dropdownContainer.ZIndex=20051
+                        dropdownContainer.Parent=sf2
+
+                        local optionsLayout=Instance.new("UIListLayout")
+                        optionsLayout.SortOrder=Enum.SortOrder.LayoutOrder
+                        optionsLayout.Padding=UDim.new(0,2)
+                        optionsLayout.Parent=dropdownContainer
+
+                        local function closeDropdown()
+                            dropdownContainer.Visible=false
                             dropdown.BackgroundColor3=Colors.Action
-                            dropdown.BorderSizePixel=0
-                            dropdown.AnchorPoint=Vector2.new(1,0.5)
-                            dropdown.Position=UDim2.new(1,0,0.5,0)
-                            dropdown.Size=UDim2.fromOffset(140,28)
-                            dropdown.FontFace=UIFont; dropdown.TextSize=14
-                            dropdown.TextColor3=Colors.Text
-                            dropdown.TextTruncate=Enum.TextTruncate.AtEnd
-                            dropdown.Text=tostring(current)
-                            dropdown.ZIndex=20002+si
-                            dropdown.Parent=fr
+                        end
 
-                            local optionsFrame=Instance.new("Frame")
-                            optionsFrame.Name="DropdownOptions"
-                            optionsFrame.BackgroundColor3=Colors.Setting
-                            optionsFrame.BorderSizePixel=0
-                            optionsFrame.AnchorPoint=Vector2.new(1,0)
-                            optionsFrame.Position=UDim2.new(1,0,1,2)
-                            optionsFrame.Size=UDim2.fromOffset(140,math.max(0,#options*30+4))
-                            optionsFrame.Visible=false
-                            optionsFrame.ZIndex=21000+si
-                            optionsFrame.Parent=fr
+                        for optionIndex,option in ipairs(options) do
+                            local optionButton=Instance.new("TextButton")
+                            optionButton.AutoButtonColor=false
+                            optionButton.BackgroundColor3=Colors.Action
+                            optionButton.BorderSizePixel=0
+                            optionButton.Size=UDim2.new(1,0,0,34)
+                            optionButton.FontFace=UIFont
+                            optionButton.TextSize=15
+                            optionButton.TextColor3=Colors.Text
+                            optionButton.Text=tostring(option)
+                            optionButton.LayoutOrder=optionIndex
+                            optionButton.ZIndex=20052
+                            optionButton.Parent=dropdownContainer
 
-                            local optionsLayout=Instance.new("UIListLayout")
-                            optionsLayout.SortOrder=Enum.SortOrder.LayoutOrder
-                            optionsLayout.Padding=UDim.new(0,2)
-                            optionsLayout.Parent=optionsFrame
+                            optionButton.MouseEnter:Connect(function()
+                                optionButton.BackgroundColor3=Colors.ActionHover
+                            end)
+                            optionButton.MouseLeave:Connect(function()
+                                optionButton.BackgroundColor3=Colors.Action
+                            end)
+                            optionButton.MouseButton1Click:Connect(function()
+                                current=option
+                                dropdown.Text=tostring(current)
+                                setSetting(catName,itemName,settingKey,current)
+                                safeCall(setting.onChanged or setting.action,current)
+                                closeDropdown()
+                            end)
+                        end
 
-                            local function closeDropdown()
-                                optionsFrame.Visible=false
+                        dropdown.MouseEnter:Connect(function()
+                            dropdown.BackgroundColor3=Colors.ActionHover
+                        end)
+                        dropdown.MouseLeave:Connect(function()
+                            if not dropdownContainer.Visible then
                                 dropdown.BackgroundColor3=Colors.Action
                             end
+                        end)
+                        dropdown.MouseButton1Click:Connect(function()
+                            dropdownContainer.Visible=not dropdownContainer.Visible
+                            dropdown.BackgroundColor3=dropdownContainer.Visible and Colors.ActionHover or Colors.Action
+                        end)
 
-                            for optionIndex,option in ipairs(options) do
-                                local optionButton=Instance.new("TextButton")
-                                optionButton.AutoButtonColor=false
-                                optionButton.BackgroundColor3=Colors.Action
-                                optionButton.BorderSizePixel=0
-                                optionButton.Size=UDim2.new(1,0,0,28)
-                                optionButton.FontFace=UIFont; optionButton.TextSize=14
-                                optionButton.TextColor3=Colors.Text
-                                optionButton.Text=tostring(option)
-                                optionButton.LayoutOrder=optionIndex
-                                optionButton.ZIndex=21001+si
-                                optionButton.Parent=optionsFrame
+                    elseif settingType=="checkbox" then
+                        local default=setting.default==true
+                        local current=getSetting(catName,itemName,settingKey,default)==true
 
-                                optionButton.MouseEnter:Connect(function()
-                                    optionButton.BackgroundColor3=Colors.ActionHover
-                                end)
-                                optionButton.MouseLeave:Connect(function()
-                                    optionButton.BackgroundColor3=Colors.Action
-                                end)
-                                optionButton.MouseButton1Click:Connect(function()
-                                    current=option
-                                    dropdown.Text=tostring(current)
-                                    setSetting(catName,itemName,setting.key,current)
-                                    if type(setting.action)=="function" then
-                                        local ok,e=pcall(setting.action,current)
-                                        if not ok then warn("[NoxLib]",e) end
-                                    end
-                                    closeDropdown()
-                                end)
-                            end
+                        local frame=Instance.new("Frame")
+                        frame.BackgroundTransparency=1
+                        frame.BorderSizePixel=0
+                        frame.Size=UDim2.new(1,0,0,38)
+                        frame.LayoutOrder=order
+                        frame.Parent=sf2
 
-                            dropdown.MouseEnter:Connect(function()
-                                dropdown.BackgroundColor3=Colors.ActionHover
-                            end)
-                            dropdown.MouseLeave:Connect(function()
-                                if not optionsFrame.Visible then dropdown.BackgroundColor3=Colors.Action end
-                            end)
-                            dropdown.MouseButton1Click:Connect(function()
-                                playButtonSound()
-                                optionsFrame.Visible=not optionsFrame.Visible
-                                dropdown.BackgroundColor3=optionsFrame.Visible and Colors.ActionHover or Colors.Action
-                            end)
+                        local check=Instance.new("TextButton")
+                        check.Name="Check"
+                        check.AutoButtonColor=false
+                        check.BackgroundColor3=current and Colors.ToggleOn or Colors.ToggleOff
+                        check.BorderSizePixel=0
+                        check.Position=UDim2.fromOffset(6,4)
+                        check.Size=UDim2.fromOffset(30,30)
+                        check.Text=""
+                        check.Parent=frame
 
-                        -- Checkbox
-                        elseif setting.type=="checkbox" then
-                            local current=getSetting(catName,itemName,setting.key,setting.default==true)==true
+                        local label=Instance.new("TextLabel")
+                        label.BackgroundTransparency=1
+                        label.Position=UDim2.fromOffset(48,0)
+                        label.Size=UDim2.new(1,-48,1,0)
+                        label.FontFace=UIFont
+                        label.TextSize=16
+                        label.TextColor3=Colors.Text
+                        label.TextXAlignment=Enum.TextXAlignment.Left
+                        label.TextTruncate=Enum.TextTruncate.AtEnd
+                        label.Text=settingName
+                        label.Parent=frame
 
-                            local fr=Instance.new("Frame")
-                            fr.BackgroundTransparency=1
-                            fr.BorderSizePixel=0
-                            fr.Size=UDim2.new(1,0,0,34)
-                            fr.LayoutOrder=10+si
-                            fr.ZIndex=20000+si
-                            fr.Parent=sf2
-
-                            local check=Instance.new("TextButton")
-                            check.Name="Check"
-                            check.AutoButtonColor=false
+                        local function updateCheckbox()
                             check.BackgroundColor3=current and Colors.ToggleOn or Colors.ToggleOff
-                            check.BorderSizePixel=0
-                            check.Position=UDim2.fromOffset(0,4)
-                            check.Size=UDim2.fromOffset(26,26)
-                            check.FontFace=UIFont; check.TextSize=16
-                            check.TextColor3=Colors.Text
-                            check.Text=current and "✓" or ""
-                            check.ZIndex=20001+si
-                            check.Parent=fr
+                        end
 
-                            local lbl=Instance.new("TextLabel")
-                            lbl.BackgroundTransparency=1
-                            lbl.Position=UDim2.fromOffset(36,0)
-                            lbl.Size=UDim2.new(1,-36,1,0)
-                            lbl.FontFace=UIFont; lbl.TextSize=14
-                            lbl.TextColor3=Colors.Text
-                            lbl.TextXAlignment=Enum.TextXAlignment.Left
-                            lbl.TextTruncate=Enum.TextTruncate.AtEnd
-                            lbl.Text=setting.name or setting.key or "Checkbox"
-                            lbl.ZIndex=20001+si; lbl.Parent=fr
+                        check.MouseEnter:Connect(function()
+                            check.BackgroundColor3=current and Colors.ToggleOnHover or Colors.ToggleOffHover
+                        end)
+                        check.MouseLeave:Connect(updateCheckbox)
+                        check.MouseButton1Click:Connect(function()
+                            current=not current
+                            updateCheckbox()
+                            setSetting(catName,itemName,settingKey,current)
+                            safeCall(setting.onChanged or setting.action,current)
+                        end)
 
-                            local function updateCheckbox()
-                                check.BackgroundColor3=current and Colors.ToggleOn or Colors.ToggleOff
-                                check.Text=current and "✓" or ""
-                            end
+                    elseif settingType=="textbox" then
+                        local fr=Instance.new("Frame")
+                        fr.BackgroundTransparency=1
+                        fr.Size=UDim2.new(1,0,0,34)
+                        fr.LayoutOrder=order
+                        fr.Parent=sf2
 
-                            check.MouseEnter:Connect(function()
-                                check.BackgroundColor3=current and Colors.ToggleOnHover or Colors.ToggleOffHover
-                            end)
-                            check.MouseLeave:Connect(updateCheckbox)
-                            check.MouseButton1Click:Connect(function()
-                                playButtonSound()
-                                current=not current
-                                updateCheckbox()
-                                setSetting(catName,itemName,setting.key,current)
-                                if type(setting.action)=="function" then
-                                    local ok,e=pcall(setting.action,current)
-                                    if not ok then warn("[NoxLib]",e) end
-                                end
-                            end)
-                    elseif setting.type=="textbox" then
-                        local fr=Instance.new("Frame"); fr.BackgroundTransparency=1
-                        fr.Size=UDim2.new(1,0,0,34); fr.LayoutOrder=10+si; fr.Parent=sf2
-                        local lbl=Instance.new("TextLabel"); lbl.BackgroundTransparency=1
-                        lbl.Size=UDim2.new(0.4,0,1,0); lbl.FontFace=UIFont; lbl.TextSize=14
-                        lbl.TextColor3=Colors.Text; lbl.TextXAlignment=Enum.TextXAlignment.Left
-                        lbl.Text=setting.name; lbl.Parent=fr
-                        local tb=Instance.new("TextBox"); tb.BackgroundColor3=Colors.ToggleOff
-                        tb.BorderSizePixel=0; tb.AnchorPoint=Vector2.new(1,0.5)
-                        tb.Position=UDim2.new(1,0,0.5,0); tb.Size=UDim2.fromOffset(140,28)
-                        tb.FontFace=UIFont; tb.TextSize=14; tb.TextColor3=Colors.Text
-                        tb.Text=getSetting(catName,itemName,setting.key,setting.default)
-                        tb.ClearTextOnFocus=false; tb.Parent=fr
+                        local lbl=Instance.new("TextLabel")
+                        lbl.BackgroundTransparency=1
+                        lbl.Size=UDim2.new(0.4,0,1,0)
+                        lbl.FontFace=UIFont
+                        lbl.TextSize=14
+                        lbl.TextColor3=Colors.Text
+                        lbl.TextXAlignment=Enum.TextXAlignment.Left
+                        lbl.Text=settingName
+                        lbl.Parent=fr
+
+                        local tb=Instance.new("TextBox")
+                        tb.BackgroundColor3=Colors.ToggleOff
+                        tb.BorderSizePixel=0
+                        tb.AnchorPoint=Vector2.new(1,0.5)
+                        tb.Position=UDim2.new(1,0,0.5,0)
+                        tb.Size=UDim2.fromOffset(140,28)
+                        tb.FontFace=UIFont
+                        tb.TextSize=14
+                        tb.TextColor3=Colors.Text
+                        tb.Text=tostring(getSetting(catName,itemName,settingKey,setting.default or ""))
+                        tb.ClearTextOnFocus=false
+                        tb.Parent=fr
+
                         tb.FocusLost:Connect(function()
-                            setSetting(catName,itemName,setting.key,tb.Text)
-                            if setting.onChanged then pcall(setting.onChanged,tb.Text) end
+                            setSetting(catName,itemName,settingKey,tb.Text)
+                            safeCall(setting.onChanged or setting.action,tb.Text)
                         end)
                     end
                 end
