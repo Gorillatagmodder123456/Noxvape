@@ -870,12 +870,6 @@ local function init()
                             check.BackgroundColor3=current and Colors.ToggleOn or Colors.ToggleOff
                         end
 
-                        -- Checkbox tooltip:
-                        -- supports setting.tooltip / setting.description, with the
-                        -- setting name as a fallback so every checkbox has one.
-                        addTooltip(check, setting.tooltip or setting.description or settingName)
-                        addTooltip(label, setting.tooltip or setting.description or settingName)
-
                         check.MouseEnter:Connect(function()
                             check.BackgroundColor3=current and Colors.ToggleOnHover or Colors.ToggleOffHover
                         end)
