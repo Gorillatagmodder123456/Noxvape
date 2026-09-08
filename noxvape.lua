@@ -664,6 +664,154 @@ local function init()
                         UserInputService.InputEnded:Connect(function(inp)
                             if inp.UserInputType==Enum.UserInputType.MouseButton1 then sdrag=false end
                         end)
+
+                        -- dropdown and checkbox
+                        elseif settingType == "dropdown" then
+				local options = setting.options or {}
+				local default = setting.default or options[1] or "None"
+				local current = getSetting(
+					categoryName, itemName, settingName, default)
+				local frame = Instance.new("Frame")
+				frame.BackgroundTransparency = 1
+				frame.BorderSizePixel = 0
+				frame.Size = UDim2.new(1, 0, 0, 38)
+				frame.LayoutOrder = order
+				frame.Parent = settingsFrame
+				local label = Instance.new("TextLabel")
+				label.BackgroundTransparency = 1
+				label.Size = UDim2.new(0.5, 0, 1, 0)
+				label.FontFace = UIFont
+				label.TextSize = 16
+				label.TextColor3 = Colors.Text
+				label.TextXAlignment = Enum.TextXAlignment.Left
+				label.Text = settingName
+				label.Parent = frame
+				local dropdown = Instance.new("TextButton")
+				dropdown.AutoButtonColor = false
+				dropdown.BackgroundColor3 = Colors.Action
+				dropdown.BorderSizePixel = 0
+				dropdown.AnchorPoint = Vector2.new(1, 0)
+				dropdown.Position = UDim2.new(1, 0, 0, 0)
+				dropdown.Size = UDim2.fromOffset(120, 38)
+				dropdown.FontFace = UIFont
+				dropdown.TextSize = 15
+				dropdown.TextColor3 = Colors.Text
+				dropdown.TextTruncate = Enum.TextTruncate.AtEnd
+				dropdown.Text = tostring(current)
+				dropdown.ZIndex = 20050
+				dropdown.Parent = frame
+				local dropdownContainer = Instance.new("Frame")
+				dropdownContainer.Name = "DropdownOptions"
+				dropdownContainer.BackgroundTransparency = 1
+				dropdownContainer.BorderSizePixel = 0
+				dropdownContainer.Size = UDim2.new(1, 0, 0, 0)
+				dropdownContainer.AutomaticSize = Enum.AutomaticSize.Y
+				dropdownContainer.LayoutOrder = order + 1
+				dropdownContainer.Visible = false
+				dropdownContainer.Parent = settingsFrame
+				local optionsLayout = Instance.new("UIListLayout")
+				optionsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+				optionsLayout.Padding = UDim.new(0, 2)
+				optionsLayout.Parent = dropdownContainer
+				local function closeDropdown()
+					dropdownContainer.Visible = false
+					dropdown.BackgroundColor3 = Colors.Action
+				end
+				for optionIndex, option in ipairs(options) do
+					local optionButton = Instance.new("TextButton")
+					optionButton.AutoButtonColor = false
+					optionButton.BackgroundColor3 = Colors.Action
+					optionButton.BorderSizePixel = 0
+					optionButton.Size = UDim2.new(1, - 16, 0, 34)
+					optionButton.FontFace = UIFont
+					optionButton.TextSize = 15
+					optionButton.TextColor3 = Colors.Text
+					optionButton.Text = tostring(option)
+					optionButton.LayoutOrder = optionIndex
+					optionButton.ZIndex = 20052
+					optionButton.Parent = dropdownContainer
+					optionButton.MouseEnter:Connect(function()
+						optionButton.BackgroundColor3 = Colors.ActionHover
+					end)
+					optionButton.MouseLeave:Connect(function()
+						optionButton.BackgroundColor3 = Colors.Action
+					end)
+					optionButton.MouseButton1Click:Connect(function()
+						current = option
+						dropdown.Text = tostring(current)
+						setSetting(categoryName, itemName, settingName, current)
+						safeCall(setting.action, current)
+						closeDropdown()
+					end)
+				end
+				dropdown.MouseEnter:Connect(function()
+					dropdown.BackgroundColor3 = Colors.ActionHover
+				end)
+				dropdown.MouseLeave:Connect(function()
+					if not dropdownContainer.Visible then
+						dropdown.BackgroundColor3 = Colors.Action
+					end
+				end)
+				dropdown.MouseButton1Click:Connect(function()
+					dropdownContainer.Visible = not dropdownContainer.Visible
+					if dropdownContainer.Visible then
+						dropdown.BackgroundColor3 = Colors.ActionHover
+					else
+						dropdown.BackgroundColor3 = Colors.Action
+					end
+				end)
+			elseif settingType == "checkbox" then
+				local default = setting.default == true
+				local current = getSetting(
+					categoryName, itemName, settingName, default) == true
+				local frame = Instance.new("Frame")
+				frame.BackgroundTransparency = 1
+				frame.BorderSizePixel = 0
+				frame.Size = UDim2.new(1, 0, 0, 38)
+				frame.LayoutOrder = order
+				frame.Parent = settingsFrame
+				local check = Instance.new("TextButton")
+				check.Name = "Check"
+				check.AutoButtonColor = false
+				check.BackgroundColor3 = current and Colors.ToggleOn or Colors.ToggleOff
+				check.BorderSizePixel = 0
+				check.Position = UDim2.fromOffset(6, 4)
+				check.Size = UDim2.fromOffset(30, 30)
+				check.AnchorPoint = Vector2.new(0, 0)
+				check.FontFace = UIFont
+				check.TextSize = 16
+				check.TextColor3 = Colors.Text
+				check.Text = ""
+				check.Parent = frame
+				local label = Instance.new("TextLabel")
+				label.BackgroundTransparency = 1
+				label.Position = UDim2.fromOffset(48, 0)
+				label.Size = UDim2.new(1, - 48, 1, 0)
+				label.FontFace = UIFont
+				label.TextSize = 16
+				label.TextColor3 = Colors.Text
+				label.TextXAlignment = Enum.TextXAlignment.Left
+				label.TextTruncate = Enum.TextTruncate.AtEnd
+				label.Text = settingName
+				label.Parent = frame
+				local function updateCheckbox()
+					check.BackgroundColor3 = current and Colors.ToggleOn or Colors.ToggleOff
+				end
+				check.MouseEnter:Connect(function()
+					check.BackgroundColor3 = current and Colors.ToggleOnHover or Colors.ToggleOffHover
+				end)
+				check.MouseLeave:Connect(function()
+					updateCheckbox()
+				end)
+				check.MouseButton1Click:Connect(function()
+					current = not current
+					updateCheckbox()
+					setSetting(categoryName, itemName, settingName, current)
+					safeCall(setting.action, current)
+				end)
+			end
+		end
+                --end
                     elseif setting.type=="textbox" then
                         local fr=Instance.new("Frame"); fr.BackgroundTransparency=1
                         fr.Size=UDim2.new(1,0,0,34); fr.LayoutOrder=10+si; fr.Parent=sf2
