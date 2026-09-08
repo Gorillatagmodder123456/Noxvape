@@ -736,6 +736,8 @@ local function init()
                         frame.BorderSizePixel=0
                         frame.Size=UDim2.new(1,0,0,38)
                         frame.LayoutOrder=order
+                        frame.ZIndex=20040
+                        frame.ClipsDescendants=false
                         frame.Parent=sf2
 
                         local label=Instance.new("TextLabel")
@@ -746,6 +748,7 @@ local function init()
                         label.TextColor3=Colors.Text
                         label.TextXAlignment=Enum.TextXAlignment.Left
                         label.Text=settingName
+                        label.ZIndex=20041
                         label.Parent=frame
 
                         local dropdown=Instance.new("TextButton")
@@ -763,17 +766,20 @@ local function init()
                         dropdown.ZIndex=20050
                         dropdown.Parent=frame
 
+                        -- Keep the option list OUT of sf2's UIListLayout.
+                        -- It overlays the rows below instead of pushing checkboxes down.
                         local dropdownContainer=Instance.new("Frame")
                         dropdownContainer.Name="DropdownOptions"
                         dropdownContainer.BackgroundColor3=Colors.Setting
                         dropdownContainer.BackgroundTransparency=0
                         dropdownContainer.BorderSizePixel=0
-                        dropdownContainer.Size=UDim2.new(1,0,0,0)
+                        dropdownContainer.Position=UDim2.new(1,0,0,38)
+                        dropdownContainer.AnchorPoint=Vector2.new(1,0)
+                        dropdownContainer.Size=UDim2.fromOffset(120,0)
                         dropdownContainer.AutomaticSize=Enum.AutomaticSize.Y
-                        dropdownContainer.LayoutOrder=order+100
                         dropdownContainer.Visible=false
                         dropdownContainer.ZIndex=20051
-                        dropdownContainer.Parent=sf2
+                        dropdownContainer.Parent=frame
 
                         local optionsLayout=Instance.new("UIListLayout")
                         optionsLayout.SortOrder=Enum.SortOrder.LayoutOrder
@@ -863,6 +869,12 @@ local function init()
                         local function updateCheckbox()
                             check.BackgroundColor3=current and Colors.ToggleOn or Colors.ToggleOff
                         end
+
+                        -- Checkbox tooltip:
+                        -- supports setting.tooltip / setting.description, with the
+                        -- setting name as a fallback so every checkbox has one.
+                        addTooltip(check, setting.tooltip or setting.description or settingName)
+                        addTooltip(label, setting.tooltip or setting.description or settingName)
 
                         check.MouseEnter:Connect(function()
                             check.BackgroundColor3=current and Colors.ToggleOnHover or Colors.ToggleOffHover
