@@ -268,7 +268,15 @@ local function createNotification(msg, kind)
     bar.Size=UDim2.new(1,0,0,3); bar.Position=UDim2.new(0,0,1,-3); bar.ZIndex=50004; bar.Parent=notif
 
     notif.Position=UDim2.fromOffset(360,0)
-    tw(notif,{Position=UDim2.fromOffset(0,0)},0.22)
+    -- Swoop in: overshoot left then settle to 0 (Back easing gives the spring feel)
+    local swoopIn=TweenService:Create(notif,
+        TweenInfo.new(0.30, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        {Position=UDim2.fromOffset(-8,0)}
+    )
+    swoopIn:Play()
+    swoopIn.Completed:Connect(function()
+        tw(notif,{Position=UDim2.fromOffset(0,0)},0.10)
+    end)
     local dur=2.4
     TweenService:Create(bar,TweenInfo.new(dur,Enum.EasingStyle.Linear),{Size=UDim2.new(0,0,0,3)}):Play()
     task.delay(dur+0.15,function()
@@ -502,9 +510,13 @@ local function init()
         ensureCategoryData(catName)
         local savedX,savedY=getPosition(catName, 240+((catIndex-1)*218), 75)
 
+        -- Card height: header(46) + top-pad(8) + each button(36+3gap) + bottom-pad(8)
+        -- Capped at 560, minimum at 100. Cards shrink to fit their content.
+        local baseH = 46 + 8 + (#items * 39) + 8
+        local cardH  = math.clamp(baseH, 100, 560)
         local card=Instance.new("Frame"); card.Name=catName
         card.BackgroundColor3=Colors.Panel; card.BackgroundTransparency=0; card.BorderSizePixel=0
-        card.Size=UDim2.fromOffset(210,560); card.Position=UDim2.fromOffset(savedX,savedY)
+        card.Size=UDim2.fromOffset(210,cardH); card.Position=UDim2.fromOffset(savedX,savedY)
         card.Visible=config.tabs[catName]==true; card.ClipsDescendants=true
         card.ZIndex=11000+catIndex; card.Parent=root
         categoryFrames[catName]=card; categoryStates[catName]=card.Visible
@@ -584,7 +596,9 @@ local function init()
                 if success then
                     currentState=newState; config.features[catName][itemName]=currentState
                     refreshColor()
-                    if currentState then notifyEnabled(itemName.." enabled") else notifyWarning(itemName.." disabled") end
+                    -- NOTE: notifications intentionally omitted here.
+                    -- Only keybind dispatch (InputBegan) shows notifications,
+                    -- so clicking a button is silent. This keeps UI clean.
                     saveConfig()
                 else refreshColor() end
             end
@@ -681,81 +695,146 @@ local function init()
                             setSetting(catName,itemName,setting.key,tb.Text)
                             if setting.onChanged then pcall(setting.onChanged,tb.Text) end
                         end)
-                                            elseif setting.type=="checkbox" then
-                        local fr=Instance.new("Frame"); fr.BackgroundTransparency=1
-                        fr.Size=UDim2.new(1,0,0,32); fr.LayoutOrder=10+si; fr.Parent=sf2
-                        local curVal = getSetting(catName,itemName,setting.key, setting.default and true or false)
-                        local chk=Instance.new("TextButton"); chk.AutoButtonColor=false
-                        chk.BackgroundColor3=curVal and Colors.Accent or Colors.ToggleOff
-                        chk.BorderSizePixel=0; chk.Position=UDim2.fromOffset(0,2)
-                        chk.Size=UDim2.fromOffset(24,24); chk.Text=""; chk.Parent=fr
-                        local clbl=Instance.new("TextLabel"); clbl.BackgroundTransparency=1
-                        clbl.Position=UDim2.fromOffset(32,0); clbl.Size=UDim2.new(1,-32,1,0)
-                        clbl.FontFace=UIFont; clbl.TextSize=14; clbl.TextColor3=Colors.Text
-                        clbl.TextXAlignment=Enum.TextXAlignment.Left; clbl.Text=setting.name; clbl.Parent=fr
 
-                        local function crefresh()
-                            chk.BackgroundColor3=curVal and Colors.Accent or Colors.ToggleOff
-                        end
-                        chk.MouseEnter:Connect(function() chk.BackgroundColor3=curVal and Colors.ToggleOnHover or Colors.ToggleOffHover end)
-                        chk.MouseLeave:Connect(function() crefresh() end)
-                        chk.MouseButton1Click:Connect(function()
-                            curVal=not curVal
-                            setSetting(catName,itemName,setting.key,curVal)
-                            crefresh()
-                            if setting.onChanged then pcall(setting.onChanged,curVal) end
+                    elseif setting.type=="checkbox" then
+                        --[[
+                            Checkbox setting type.
+                            Spec: { type="checkbox", name="Label", key="myKey", default=false }
+                            Saves a boolean to settings.
+                        ]]
+                        local fr=Instance.new("Frame"); fr.BackgroundTransparency=1
+                        fr.Size=UDim2.new(1,0,0,28); fr.LayoutOrder=10+si; fr.Parent=sf2
+
+                        local cbVal = getSetting(catName,itemName,setting.key,setting.default) == true
+                        local cbBox=Instance.new("TextButton"); cbBox.AutoButtonColor=false
+                        cbBox.BackgroundColor3=cbVal and Colors.Accent or Colors.ToggleOff
+                        cbBox.BorderSizePixel=0; cbBox.Size=UDim2.fromOffset(20,20)
+                        cbBox.Position=UDim2.fromOffset(0,4); cbBox.Text=""
+                        cbBox.ZIndex=(sf2.ZIndex+2); cbBox.Parent=fr
+
+                        local cbLbl=Instance.new("TextLabel"); cbLbl.BackgroundTransparency=1
+                        cbLbl.Position=UDim2.fromOffset(26,0); cbLbl.Size=UDim2.new(1,-26,1,0)
+                        cbLbl.FontFace=UIFont; cbLbl.TextSize=14; cbLbl.TextColor3=Colors.Text
+                        cbLbl.TextXAlignment=Enum.TextXAlignment.Left
+                        cbLbl.Text=setting.name; cbLbl.Parent=fr
+
+                        cbBox.MouseEnter:Connect(function()
+                            cbBox.BackgroundColor3 = cbVal and Colors.ToggleOnHover or Colors.ToggleOffHover
+                        end)
+                        cbBox.MouseLeave:Connect(function()
+                            cbBox.BackgroundColor3 = cbVal and Colors.Accent or Colors.ToggleOff
+                        end)
+                        cbBox.MouseButton1Click:Connect(function()
+                            cbVal = not cbVal
+                            cbBox.BackgroundColor3 = cbVal and Colors.Accent or Colors.ToggleOff
+                            setSetting(catName,itemName,setting.key,cbVal)
+                            if setting.onChanged then pcall(setting.onChanged,cbVal) end
                         end)
 
                     elseif setting.type=="dropdown" then
+                        --[[
+                            Dropdown setting type. Extends below the settings panel.
+                            Spec: { type="dropdown", name="Label", key="myKey",
+                                    default="Option1", options={"Option1","Option2","Option3"} }
+                            The dropdown list is parented to `scroll` so it draws over other buttons.
+                            It is positioned using AbsolutePosition after the button is visible.
+                        ]]
+                        local opts = setting.options or {}
+                        local curVal = getSetting(catName,itemName,setting.key,setting.default or opts[1] or "")
+
                         local fr=Instance.new("Frame"); fr.BackgroundTransparency=1
-                        fr.Size=UDim2.new(1,0,0,34); fr.LayoutOrder=10+si
-                        fr.ClipsDescendants=false; fr.Parent=sf2
+                        fr.Size=UDim2.new(1,0,0,28); fr.LayoutOrder=10+si; fr.Parent=sf2
 
-                        local dlbl=Instance.new("TextLabel"); dlbl.BackgroundTransparency=1
-                        dlbl.Size=UDim2.new(0.4,0,0,34); dlbl.FontFace=UIFont; dlbl.TextSize=14
-                        dlbl.TextColor3=Colors.Text; dlbl.TextXAlignment=Enum.TextXAlignment.Left
-                        dlbl.Text=setting.name; dlbl.Parent=fr
+                        local ddLbl=Instance.new("TextLabel"); ddLbl.BackgroundTransparency=1
+                        ddLbl.Size=UDim2.new(0.42,0,1,0); ddLbl.FontFace=UIFont; ddLbl.TextSize=14
+                        ddLbl.TextColor3=Colors.Text; ddLbl.TextXAlignment=Enum.TextXAlignment.Left
+                        ddLbl.Text=setting.name; ddLbl.Parent=fr
 
-                        local curVal = getSetting(catName,itemName,setting.key,setting.default)
+                        -- The trigger button that shows the current value
                         local ddBtn=Instance.new("TextButton"); ddBtn.AutoButtonColor=false
-                        ddBtn.BackgroundColor3=Colors.ToggleOff; ddBtn.BorderSizePixel=0
-                        ddBtn.AnchorPoint=Vector2.new(1,0); ddBtn.Position=UDim2.new(1,0,0,3)
-                        ddBtn.Size=UDim2.fromOffset(140,28); ddBtn.FontFace=UIFont; ddBtn.TextSize=14
-                        ddBtn.TextColor3=Colors.Text
-                        ddBtn.Text=tostring(curVal).."  ▾"
-                        ddBtn.ZIndex=sf2.ZIndex+1; ddBtn.Parent=fr
+                        ddBtn.BackgroundColor3=Colors.Action; ddBtn.BorderSizePixel=0
+                        ddBtn.AnchorPoint=Vector2.new(1,0.5); ddBtn.Position=UDim2.new(1,0,0.5,0)
+                        ddBtn.Size=UDim2.fromOffset(112,24); ddBtn.FontFace=UIFont; ddBtn.TextSize=13
+                        ddBtn.TextColor3=Colors.Text; ddBtn.Text=curVal.." ▾"; ddBtn.ZIndex=(sf2.ZIndex+2)
+                        ddBtn.Parent=fr
 
-                        local listFrame=Instance.new("Frame"); listFrame.Name="DropdownList"
-                        listFrame.BackgroundColor3=Colors.Setting; listFrame.BorderSizePixel=0
-                        listFrame.Visible=false; listFrame.AnchorPoint=Vector2.new(1,0)
-                        listFrame.Position=UDim2.new(1,0,0,34)
-                        listFrame.Size=UDim2.new(0,140,0,0)
-                        listFrame.AutomaticSize=Enum.AutomaticSize.Y
-                        listFrame.ZIndex=sf2.ZIndex+2; listFrame.Parent=fr
-                        local ll=Instance.new("UIListLayout"); ll.SortOrder=Enum.SortOrder.LayoutOrder; ll.Parent=listFrame
+                        ddBtn.MouseEnter:Connect(function() tw(ddBtn,{BackgroundColor3=Colors.ActionHover},0.08) end)
+                        ddBtn.MouseLeave:Connect(function() tw(ddBtn,{BackgroundColor3=Colors.Action},0.08) end)
 
-                        for oi,optVal in ipairs(setting.options or {}) do
-                            local ob=Instance.new("TextButton"); ob.AutoButtonColor=false
-                            ob.BackgroundColor3=Colors.ToggleOff; ob.BorderSizePixel=0
-                            ob.Size=UDim2.new(1,0,0,26); ob.LayoutOrder=oi
-                            ob.FontFace=UIFont; ob.TextSize=13; ob.TextColor3=Colors.Text
-                            ob.ZIndex=listFrame.ZIndex+1
-                            ob.Text=tostring(optVal); ob.Parent=listFrame
-                            ob.MouseEnter:Connect(function() ob.BackgroundColor3=Colors.ToggleOffHover end)
-                            ob.MouseLeave:Connect(function() ob.BackgroundColor3=Colors.ToggleOff end)
-                            ob.MouseButton1Click:Connect(function()
-                                curVal=optVal
-                                setSetting(catName,itemName,setting.key,curVal)
-                                ddBtn.Text=tostring(curVal).."  ▾"
-                                listFrame.Visible=false
-                                if setting.onChanged then pcall(setting.onChanged,curVal) end
+                        -- Dropdown list — parented to scroll so it draws over surrounding buttons
+                        local ddList=Instance.new("Frame"); ddList.Name="DropdownList"
+                        ddList.BackgroundColor3=Colors.Setting; ddList.BorderSizePixel=0
+                        ddList.ZIndex=11200+catIndex; ddList.Visible=false
+                        ddList.AutomaticSize=Enum.AutomaticSize.Y
+                        ddList.Size=UDim2.fromOffset(130,0)
+                        ddList.Parent=scroll   -- parent to scroll so absolute position works within card
+
+                        local ddListLayout=Instance.new("UIListLayout")
+                        ddListLayout.SortOrder=Enum.SortOrder.LayoutOrder; ddListLayout.Padding=UDim.new(0,1)
+                        ddListLayout.Parent=ddList
+
+                        for oi,opt in ipairs(opts) do
+                            local optBtn=Instance.new("TextButton"); optBtn.AutoButtonColor=false
+                            optBtn.BackgroundColor3= (opt==curVal) and Colors.Accent or Colors.Action
+                            optBtn.BorderSizePixel=0; optBtn.LayoutOrder=oi
+                            optBtn.Size=UDim2.new(1,0,0,26); optBtn.FontFace=UIFont; optBtn.TextSize=13
+                            optBtn.TextColor3=Colors.Text; optBtn.Text=opt; optBtn.ZIndex=11201+catIndex
+                            optBtn.Parent=ddList
+
+                            optBtn.MouseEnter:Connect(function()
+                                if opt~=curVal then tw(optBtn,{BackgroundColor3=Colors.ActionHover},0.08) end
+                            end)
+                            optBtn.MouseLeave:Connect(function()
+                                optBtn.BackgroundColor3=(opt==curVal) and Colors.Accent or Colors.Action
+                            end)
+                            optBtn.MouseButton1Click:Connect(function()
+                                curVal=opt; setSetting(catName,itemName,setting.key,opt)
+                                ddBtn.Text=opt.." ▾"
+                                -- Recolor all option buttons
+                                for _,child in ipairs(ddList:GetChildren()) do
+                                    if child:IsA("TextButton") then
+                                        child.BackgroundColor3=(child.Text==opt) and Colors.Accent or Colors.Action
+                                    end
+                                end
+                                ddList.Visible=false
+                                if setting.onChanged then pcall(setting.onChanged,opt) end
                             end)
                         end
 
-                        ddBtn.MouseEnter:Connect(function() ddBtn.BackgroundColor3=Colors.ToggleOffHover end)
-                        ddBtn.MouseLeave:Connect(function() ddBtn.BackgroundColor3=Colors.ToggleOff end)
+                        local ddOpen=false
                         ddBtn.MouseButton1Click:Connect(function()
-                            listFrame.Visible=not listFrame.Visible
+                            ddOpen=not ddOpen
+                            if ddOpen then
+                                -- Position the list just below the trigger button using absolute coords
+                                -- We wait one frame so AbsolutePosition is valid
+                                task.defer(function()
+                                    if not ddBtn.Parent or not scroll.Parent then return end
+                                    local btnAbs = ddBtn.AbsolutePosition
+                                    local scrollAbs = scroll.AbsolutePosition
+                                    local relX = btnAbs.X - scrollAbs.X + ddBtn.AbsoluteSize.X - 130
+                                    local relY = btnAbs.Y - scrollAbs.Y + ddBtn.AbsoluteSize.Y + 2
+                                    ddList.Position = UDim2.fromOffset(relX, relY + scroll.CanvasPosition.Y)
+                                    ddList.Visible = true
+                                end)
+                            else
+                                ddList.Visible=false
+                            end
+                        end)
+
+                        -- Close dropdown if clicking outside
+                        UserInputService.InputBegan:Connect(function(inp)
+                            if inp.UserInputType==Enum.UserInputType.MouseButton1 and ddOpen then
+                                -- Check if click was on the list; if not, close
+                                task.defer(function()
+                                    if ddList.Visible then
+                                        local mouse=UserInputService:GetMouseLocation()
+                                        local ap=ddList.AbsolutePosition; local as=ddList.AbsoluteSize
+                                        if mouse.X<ap.X or mouse.X>ap.X+as.X or mouse.Y<ap.Y or mouse.Y>ap.Y+as.Y then
+                                            ddList.Visible=false; ddOpen=false
+                                        end
+                                    end
+                                end)
+                            end
                         end)
                     end
                 end
@@ -1115,7 +1194,18 @@ local function init()
             for featName,bound in pairs(feats) do
                 if bound==key then
                     local d=buttonData[catName] and buttonData[catName][featName]
-                    if d and d.toggle then d.toggle() end; break
+                    if d and d.toggle then
+                        d.toggle()
+                        -- Show notification only when triggered by keybind
+                        if d.getState then
+                            if d.getState() then
+                                notifyEnabled(featName.." enabled")
+                            else
+                                notifyWarning(featName.." disabled")
+                            end
+                        end
+                    end
+                    break
                 end
             end
         end
