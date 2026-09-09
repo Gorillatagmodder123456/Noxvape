@@ -637,93 +637,158 @@ local function init()
                     local settingKey = tostring(setting.key or setting.name or ("setting"..si))
                     local order = 10 + si
 
-                    if settingType=="slider" then
-                        local min = tonumber(setting.min) or 0
-                        local max = tonumber(setting.max) or 100
-                        if max < min then min,max=max,min end
+                   if settingType=="slider" then
+    local min = tonumber(setting.min) or 0
+    local max = tonumber(setting.max) or 100
+    if max < min then min,max=max,min end
 
-                        local default = tonumber(setting.default)
-                        if default==nil then default=min end
-                        default=math.clamp(default,min,max)
+    local default = tonumber(setting.default)
+    if default==nil then default=min end
+    default=math.clamp(default,min,max)
 
-                        local cv=tonumber(getSetting(catName,itemName,settingKey,default)) or default
-                        cv=math.clamp(cv,min,max)
+    -- Optional increment:
+    -- step = 1     -> whole numbers
+    -- step = 0.1   -> 0.1 increments
+    -- step = 0.05  -> 0.05 increments
+    -- step = 0.01  -> 0.01 increments
+    local step = tonumber(setting.step) or 1
+    if step <= 0 then step = 1 end
 
-                        local fr=Instance.new("Frame")
-                        fr.BackgroundTransparency=1
-                        fr.Size=UDim2.new(1,0,0,48)
-                        fr.LayoutOrder=order
-                        fr.Parent=sf2
+    local cv=tonumber(getSetting(catName,itemName,settingKey,default)) or default
 
-                        local lbl=Instance.new("TextLabel")
-                        lbl.BackgroundTransparency=1
-                        lbl.Size=UDim2.new(1,0,0,18)
-                        lbl.FontFace=UIFont
-                        lbl.TextSize=14
-                        lbl.TextColor3=Colors.Text
-                        lbl.TextXAlignment=Enum.TextXAlignment.Left
-                        lbl.Text=settingName.." ("..math.floor(cv+0.5)..")"
-                        lbl.Parent=fr
+    local function roundToStep(value)
+        value = math.clamp(value,min,max)
 
-                        local sbg=Instance.new("Frame")
-                        sbg.BackgroundColor3=Colors.ToggleOff
-                        sbg.BorderSizePixel=0
-                        sbg.Position=UDim2.fromOffset(0,24)
-                        sbg.Size=UDim2.new(1,0,0,14)
-                        sbg.Parent=fr
+        local steps = math.floor(((value-min)/step)+0.5)
+        local result = min + (steps*step)
 
-                        local range=max-min
-                        local pct=(range==0) and 0 or math.clamp((cv-min)/range,0,1)
+        return math.clamp(result,min,max)
+    end
 
-                        local sfill=Instance.new("Frame")
-                        sfill.BackgroundColor3=Colors.Accent
-                        sfill.BorderSizePixel=0
-                        sfill.Size=UDim2.new(pct,0,1,0)
-                        sfill.Parent=sbg
+    cv=roundToStep(cv)
 
-                        local sknob=Instance.new("TextButton")
-                        sknob.AutoButtonColor=false
-                        sknob.BackgroundColor3=Colors.Accent
-                        sknob.BorderSizePixel=0
-                        sknob.AnchorPoint=Vector2.new(0.5,0.5)
-                        sknob.Position=UDim2.new(pct,0,0.5,0)
-                        sknob.Size=UDim2.fromOffset(12,16)
-                        sknob.Text=""
-                        sknob.Parent=sbg
+    local function formatValue(value)
+        if step >= 1 and step == math.floor(step) then
+            return tostring(math.floor(value+0.5))
+        end
 
-                        local function supdate(val)
-                            val=math.clamp(math.floor(val+0.5),min,max)
-                            setSetting(catName,itemName,settingKey,val)
-                            local p=(range==0) and 0 or math.clamp((val-min)/range,0,1)
-                            sfill.Size=UDim2.new(p,0,1,0)
-                            sknob.Position=UDim2.new(p,0,0.5,0)
-                            lbl.Text=settingName.." ("..val..")"
-                            safeCall(setting.onChanged or setting.action,val)
-                        end
+        local decimals=0
+        local temp=step
 
-                        local sdrag=false
-                        sknob.MouseButton1Down:Connect(function() sdrag=true end)
-                        sbg.InputBegan:Connect(function(inp)
-                            if inp.UserInputType==Enum.UserInputType.MouseButton1 then
-                                sdrag=true
-                                local width=sbg.AbsoluteSize.X
-                                if width>0 then
-                                    local pos=UserInputService:GetMouseLocation().X-sbg.AbsolutePosition.X
-                                    supdate(min+math.clamp(pos/width,0,1)*range)
-                                end
-                            end
-                        end)
-                        UserInputService.InputChanged:Connect(function(inp)
-                            if not sdrag or inp.UserInputType~=Enum.UserInputType.MouseMovement then return end
-                            if not sbg.Parent then return end
-                            local width=sbg.AbsoluteSize.X
-                            if width<=0 then return end
-                            local pos=UserInputService:GetMouseLocation().X-sbg.AbsolutePosition.X
-                            supdate(min+math.clamp(pos/width,0,1)*range)
-                        end)
-                        UserInputService.InputEnded:Connect(function(inp)
-                            if inp.UserInputType==Enum.UserInputType.MouseButton1 then sdrag=false end
-                        end)
+        while decimals < 10 and math.abs(temp-math.floor(temp)) > 0.000001 do
+            temp=temp*10
+            decimals+=1
+        end
+
+        return string.format("%."..decimals.."f",value)
+    end
+
+    local fr=Instance.new("Frame")
+    fr.BackgroundTransparency=1
+    fr.Size=UDim2.new(1,0,0,48)
+    fr.LayoutOrder=order
+    fr.Parent=sf2
+
+    local lbl=Instance.new("TextLabel")
+    lbl.BackgroundTransparency=1
+    lbl.Size=UDim2.new(1,0,0,18)
+    lbl.FontFace=UIFont
+    lbl.TextSize=14
+    lbl.TextColor3=Colors.Text
+    lbl.TextXAlignment=Enum.TextXAlignment.Left
+    lbl.Text=settingName.." ("..formatValue(cv)..")"
+    lbl.Parent=fr
+
+    local sbg=Instance.new("Frame")
+    sbg.BackgroundColor3=Colors.ToggleOff
+    sbg.BorderSizePixel=0
+    sbg.Position=UDim2.fromOffset(0,24)
+    sbg.Size=UDim2.new(1,0,0,14)
+    sbg.Parent=fr
+
+    local range=max-min
+    local pct=(range==0) and 0 or math.clamp((cv-min)/range,0,1)
+
+    local sfill=Instance.new("Frame")
+    sfill.BackgroundColor3=Colors.Accent
+    sfill.BorderSizePixel=0
+    sfill.Size=UDim2.new(pct,0,1,0)
+    sfill.Parent=sbg
+
+    local sknob=Instance.new("TextButton")
+    sknob.AutoButtonColor=false
+    sknob.BackgroundColor3=Colors.Accent
+    sknob.BorderSizePixel=0
+    sknob.AnchorPoint=Vector2.new(0.5,0.5)
+    sknob.Position=UDim2.new(pct,0,0.5,0)
+    sknob.Size=UDim2.fromOffset(12,16)
+    sknob.Text=""
+    sknob.Parent=sbg
+
+    local function supdate(val)
+        val=roundToStep(val)
+
+        setSetting(catName,itemName,settingKey,val)
+
+        local p=(range==0) and 0 or math.clamp((val-min)/range,0,1)
+
+        sfill.Size=UDim2.new(p,0,1,0)
+        sknob.Position=UDim2.new(p,0,0.5,0)
+
+        lbl.Text=settingName.." ("..formatValue(val)..")"
+
+        safeCall(setting.onChanged or setting.action,val)
+    end
+
+    local sdrag=false
+
+    sknob.MouseButton1Down:Connect(function()
+        sdrag=true
+    end)
+
+    sbg.InputBegan:Connect(function(inp)
+        if inp.UserInputType==Enum.UserInputType.MouseButton1 then
+            sdrag=true
+
+            local width=sbg.AbsoluteSize.X
+
+            if width>0 then
+                local pos=UserInputService:GetMouseLocation().X-sbg.AbsolutePosition.X
+
+                supdate(
+                    min+math.clamp(pos/width,0,1)*range
+                )
+            end
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(inp)
+        if not sdrag or inp.UserInputType~=Enum.UserInputType.MouseMovement then
+            return
+        end
+
+        if not sbg.Parent then
+            return
+        end
+
+        local width=sbg.AbsoluteSize.X
+
+        if width<=0 then
+            return
+        end
+
+        local pos=UserInputService:GetMouseLocation().X-sbg.AbsolutePosition.X
+
+        supdate(
+            min+math.clamp(pos/width,0,1)*range
+        )
+    end)
+
+    UserInputService.InputEnded:Connect(function(inp)
+        if inp.UserInputType==Enum.UserInputType.MouseButton1 then
+            sdrag=false
+        end
+    end)
 
                     elseif settingType=="dropdown" then
                         local options=type(setting.options)=="table" and setting.options or {}
