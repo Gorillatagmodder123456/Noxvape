@@ -1,6 +1,67 @@
 --[[
     NoxLib v1.0  —  noxvape GUI Framework
-    ... (rest of your header comment) ...
+
+    API:
+        NoxLib.addCategory(name)
+        NoxLib.addButton(categoryName, opts)
+
+        opts = {
+            name        = "MyFeature",
+            toggle      = true,
+            description = "Tooltip text",
+            action      = function(enabled) ... end,
+
+            settings = {
+                {
+                    type = "slider",
+                    name = "Speed",
+                    key = "speed",
+                    default = 10,
+                    min = 1,
+                    max = 100
+                },
+
+                {
+                    type = "dropdown",
+                    name = "Mode",
+                    key = "mode",
+                    default = "Normal",
+                    options = {"Normal", "Fast", "Legit"}
+                },
+
+                {
+                    type = "checkbox",
+                    name = "Team Check",
+                    key = "teamCheck",
+                    default = false
+                },
+
+                {
+                    type = "textbox",
+                    name = "ID",
+                    key = "id",
+                    default = "0"
+                },
+
+                {
+                    type = "colorpicker",
+                    name = "Color",
+                    key = "color",
+                    default = Color3.fromRGB(55, 150, 200)
+                }
+            }
+        }
+
+        NoxLib.notify(message, type)
+        NoxLib.Features.isEnabled(category, name)
+        NoxLib.Features.enable(category, name)
+        NoxLib.Features.disable(category, name)
+        NoxLib.Features.forceOff(category, name)
+        NoxLib.getSetting(cat, feat, key, default)
+        NoxLib.setSetting(cat, feat, key, value)
+        NoxLib.saveConfig()
+        NoxLib.setMenuVisible(bool)
+        NoxLib.init()
 ]]
 
 -- Services
@@ -9,7 +70,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
-local GuiService = game:GetService("GuiService") -- FIXED: Added GuiService for inset
+local RunService = game:GetService("RunService") -- Added for RGB loop
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -251,7 +312,7 @@ if oldBlur then oldBlur:Destroy() end
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "Nox"
 screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true
+screenGui.IgnoreGuiInset = true -- IMPORTANT: This means mouse coordinates match GUI coordinates
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 100000
 screenGui.Parent = playerGui
@@ -431,7 +492,9 @@ local function showTooltip(text)
         local camera = workspace.CurrentCamera
         if not camera then return end
 
-        local mouse = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED: Use GUI-space mouse
+        -- FIXED: Removed GuiService:GetGuiInset() because IgnoreGuiInset is true.
+        -- The mouse location directly matches AbsolutePosition.
+        local mouse = UserInputService:GetMouseLocation()
 
         local frame = Instance.new("Frame")
         frame.Name = "Tooltip"
@@ -1152,7 +1215,7 @@ local function init()
                             dragging = true
                             local width = sliderBackground.AbsoluteSize.X
                             if width > 0 then
-                                local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                                local mousePos = UserInputService:GetMouseLocation() -- FIXED: Removed GuiInset
                                 local position = mousePos.X - sliderBackground.AbsolutePosition.X
                                 updateSlider(min + math.clamp(position / width, 0, 1) * range)
                             end
@@ -1167,7 +1230,7 @@ local function init()
                             end
                             local width = sliderBackground.AbsoluteSize.X
                             if width <= 0 then return end
-                            local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                            local mousePos = UserInputService:GetMouseLocation() -- FIXED: Removed GuiInset
                             local position = mousePos.X - sliderBackground.AbsolutePosition.X
                             updateSlider(min + math.clamp(position / width, 0, 1) * range)
                         end)
@@ -1220,6 +1283,22 @@ local function init()
                         previewStroke.Thickness = 1
                         previewStroke.Transparency = 0
                         previewStroke.Parent = preview
+
+                        -- NEW: RGB Toggle Button
+                        local rgbBtn = Instance.new("TextButton")
+                        rgbBtn.Name = "RGBButton"
+                        rgbBtn.AutoButtonColor = false
+                        rgbBtn.BackgroundColor3 = Colors.Action
+                        rgbBtn.BackgroundTransparency = 0
+                        rgbBtn.BorderSizePixel = 0
+                        rgbBtn.AnchorPoint = Vector2.new(1, 0)
+                        rgbBtn.Position = UDim2.new(1, -70, 0, 5)
+                        rgbBtn.Size = UDim2.fromOffset(36, 28)
+                        rgbBtn.FontFace = UIFont
+                        rgbBtn.TextSize = 14
+                        rgbBtn.TextColor3 = Colors.Text
+                        rgbBtn.Text = "RGB"
+                        rgbBtn.Parent = frame
 
                         local pickerFrame = Instance.new("Frame")
                         pickerFrame.Name = "ColorPicker"
@@ -1296,10 +1375,12 @@ local function init()
                         colorDisplayStroke.Thickness = 1
                         colorDisplayStroke.Parent = colorDisplay
 
+                        -- FIXED: Correct hue mapping for this specific wheel image.
+                        -- Red is at Left (pi), Cyan is at Right (0).
                         local function updateWheelPicker()
                             local centerX = wheel.AbsoluteSize.X / 2
                             local centerY = wheel.AbsoluteSize.Y / 2
-                            local angle = (hue * math.pi * 2) - math.pi
+                            local angle = math.pi - (hue * math.pi * 2) -- Corrected mapping
                             local radius = saturation * math.min(wheel.AbsoluteSize.X, wheel.AbsoluteSize.Y) / 2
                             wheelPicker.Position = UDim2.fromOffset(
                                 centerX + math.cos(angle) * radius,
@@ -1331,9 +1412,11 @@ local function init()
 
                         local wheelDragging = false
                         local darknessDragging = false
+                        local autoRGB = false
+                        local rgbConnection = nil
 
                         local function updateWheelFromMouse()
-                            local mouse = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                            local mouse = UserInputService:GetMouseLocation() -- FIXED: Removed GuiInset
                             local center = wheel.AbsolutePosition + (wheel.AbsoluteSize / 2)
                             local offset = mouse - center
                             local radius = math.min(wheel.AbsoluteSize.X, wheel.AbsoluteSize.Y) / 2
@@ -1344,14 +1427,11 @@ local function init()
                                 distance = radius
                             end
 
-                            if distance <= 0 then
-                                saturation = 0
-                            else
-                                saturation = math.clamp(distance / radius, 0, 1)
-                            end
+                            saturation = distance <= 0 and 0 or math.clamp(distance / radius, 0, 1)
 
                             local angle = math.atan2(offset.Y, offset.X)
-                            hue = (angle + math.pi) / (math.pi * 2)
+                            -- FIXED: Correct hue mapping
+                            hue = (math.pi - angle) / (math.pi * 2)
                             hue = hue % 1
 
                             wheelPicker.Position = UDim2.fromOffset(
@@ -1364,7 +1444,7 @@ local function init()
                         end
 
                         local function updateDarknessFromMouse()
-                            local mouseY = UserInputService:GetMouseLocation().Y + GuiService:GetGuiInset().Y -- FIXED
+                            local mouseY = UserInputService:GetMouseLocation().Y -- FIXED: Removed GuiInset
                             local top = darkness.AbsolutePosition.Y
                             local height = darkness.AbsoluteSize.Y
                             local position = math.clamp(mouseY - top, 0, height)
@@ -1409,6 +1489,44 @@ local function init()
                             wheelDragging = false
                             darknessDragging = false
                         end)
+
+                        -- NEW: RGB Toggle Logic
+                        local function toggleRGB()
+                            if autoRGB then
+                                autoRGB = false
+                                if rgbConnection then rgbConnection:Disconnect(); rgbConnection = nil end
+                                rgbBtn.BackgroundColor3 = Colors.Action
+                            else
+                                autoRGB = true
+                                rgbBtn.BackgroundColor3 = Colors.Accent
+                                local lastTime = tick()
+                                rgbConnection = RunService.Heartbeat:Connect(function()
+                                    if not frame.Parent then
+                                        if rgbConnection then rgbConnection:Disconnect(); rgbConnection = nil end
+                                        return
+                                    end
+                                    local now = tick()
+                                    local dt = now - lastTime
+                                    lastTime = now
+                                    hue = (hue + dt * 0.15) % 1 -- cycle speed
+                                    updateWheelPicker()
+                                    updateGradient()
+                                    applyColor()
+                                end)
+                            end
+                        end
+
+                        rgbBtn.MouseEnter:Connect(function()
+                            if not autoRGB then rgbBtn.BackgroundColor3 = Colors.ActionHover end
+                        end)
+                        rgbBtn.MouseLeave:Connect(function()
+                            if not autoRGB then rgbBtn.BackgroundColor3 = Colors.Action end
+                        end)
+                        rgbBtn.MouseButton1Click:Connect(function()
+                            playButtonSound()
+                            toggleRGB()
+                        end)
+                        addTooltip(rgbBtn, "Toggle automatic RGB cycling")
 
                         local function closePicker()
                             pickerFrame.Visible = false
@@ -2078,7 +2196,7 @@ local function init()
             sliderBackground.InputBegan:Connect(function(input)
                 if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
                 dragging = true
-                local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                local mousePos = UserInputService:GetMouseLocation() -- FIXED: Removed GuiInset
                 local position = mousePos.X - sliderBackground.AbsolutePosition.X
                 update(math.clamp(position / sliderBackground.AbsoluteSize.X, 0, 1))
             end)
@@ -2086,7 +2204,7 @@ local function init()
             UserInputService.InputChanged:Connect(function(input)
                 if not dragging or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
                 if not sliderBackground.Parent then return end
-                local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                local mousePos = UserInputService:GetMouseLocation() -- FIXED: Removed GuiInset
                 local position = mousePos.X - sliderBackground.AbsolutePosition.X
                 update(math.clamp(position / sliderBackground.AbsoluteSize.X, 0, 1))
             end)
