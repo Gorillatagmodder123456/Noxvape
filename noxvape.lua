@@ -1,67 +1,6 @@
 --[[
     NoxLib v1.0  —  noxvape GUI Framework
-
-    API:
-        NoxLib.addCategory(name)
-        NoxLib.addButton(categoryName, opts)
-
-        opts = {
-            name        = "MyFeature",
-            toggle      = true,
-            description = "Tooltip text",
-            action      = function(enabled) ... end,
-
-            settings = {
-                {
-                    type = "slider",
-                    name = "Speed",
-                    key = "speed",
-                    default = 10,
-                    min = 1,
-                    max = 100
-                },
-
-                {
-                    type = "dropdown",
-                    name = "Mode",
-                    key = "mode",
-                    default = "Normal",
-                    options = {"Normal", "Fast", "Legit"}
-                },
-
-                {
-                    type = "checkbox",
-                    name = "Team Check",
-                    key = "teamCheck",
-                    default = false
-                },
-
-                {
-                    type = "textbox",
-                    name = "ID",
-                    key = "id",
-                    default = "0"
-                },
-
-                {
-                    type = "colorpicker",
-                    name = "Color",
-                    key = "color",
-                    default = Color3.fromRGB(55, 150, 200)
-                }
-            }
-        }
-
-        NoxLib.notify(message, type)
-        NoxLib.Features.isEnabled(category, name)
-        NoxLib.Features.enable(category, name)
-        NoxLib.Features.disable(category, name)
-        NoxLib.Features.forceOff(category, name)
-        NoxLib.getSetting(cat, feat, key, default)
-        NoxLib.setSetting(cat, feat, key, value)
-        NoxLib.saveConfig()
-        NoxLib.setMenuVisible(bool)
-        NoxLib.init()
+    ... (rest of your header comment) ...
 ]]
 
 -- Services
@@ -70,48 +9,36 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
+local GuiService = game:GetService("GuiService") -- FIXED: Added GuiService for inset
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Constants
 local CONFIG_FILE = "noxvape.json"
-
 local LOGO_FILE = "noxvapev4.png"
 local LOGO_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/noxvapev4.png"
-
 local SEARCH_ICON_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/icons8-search-24.png"
-
 local POGCHAMP_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/pogchamp-removebg-preview.png"
-
-local SETTINGS_ICON_URL =
-    "https://github.com/Gorillatagmodder123456/a/raw/main/ChatGPT%20Image%20Aug%2026%2C%202026%2C%2007_00_05%20AM.png"
+local SETTINGS_ICON_URL = "https://github.com/Gorillatagmodder123456/a/raw/main/ChatGPT%20Image%20Aug%2026%2C%202026%2C%2007_00_05%20AM.png"
 
 -- Colors
 local Colors = {
     Background = Color3.fromRGB(1, 1, 2),
     Panel = Color3.fromRGB(4, 5, 7),
     PanelHover = Color3.fromRGB(9, 11, 15),
-
     ToggleOff = Color3.fromRGB(7, 9, 12),
     ToggleOffHover = Color3.fromRGB(12, 15, 20),
-
     ToggleOn = Color3.fromRGB(30, 100, 140),
     ToggleOnHover = Color3.fromRGB(40, 120, 165),
-
     Action = Color3.fromRGB(10, 12, 16),
     ActionHover = Color3.fromRGB(18, 22, 28),
-
     Setting = Color3.fromRGB(5, 7, 10),
-
     Accent = Color3.fromRGB(55, 150, 200),
-
     Warning = Color3.fromRGB(255, 165, 0),
     Error = Color3.fromRGB(220, 50, 50),
-
     Text = Color3.fromRGB(235, 240, 245),
     MutedText = Color3.fromRGB(140, 150, 160),
-
     Tooltip = Color3.fromRGB(3, 4, 6)
 }
 
@@ -123,14 +50,8 @@ local UIFont = Font.new(
 
 -- Helpers
 local function getCustomAsset(path)
-    if type(getcustomasset) == "function" then
-        return getcustomasset(path)
-    end
-
-    if type(getsynasset) == "function" then
-        return getsynasset(path)
-    end
-
+    if type(getcustomasset) == "function" then return getcustomasset(path) end
+    if type(getsynasset) == "function" then return getsynasset(path) end
     return nil
 end
 
@@ -141,91 +62,53 @@ local function canUseFiles()
 end
 
 local function tw(obj, props, dur)
-    if not obj or not obj.Parent then
-        return
-    end
-
+    if not obj or not obj.Parent then return end
     local tween = TweenService:Create(
         obj,
-        TweenInfo.new(
-            dur or 0.12,
-            Enum.EasingStyle.Quart,
-            Enum.EasingDirection.Out
-        ),
+        TweenInfo.new(dur or 0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
         props
     )
-
     tween:Play()
-
     return tween
 end
 
 local function safeCall(fn, ...)
-    if type(fn) ~= "function" then
-        return true
-    end
-
+    if type(fn) ~= "function" then return true end
     local ok, result = pcall(fn, ...)
-
     if not ok then
         warn("[NoxLib]", result)
         return false, result
     end
-
     return true, result
 end
 
 -- Config
 local config = {
     version = 1,
-
     features = {},
     tabs = {},
     positions = {},
     keybinds = {},
     settings = {},
-
-    noxPosition = {
-        x = 18,
-        y = 75
-    },
-
-    searchPosition = {
-        x = 300,
-        y = 50
-    },
-
+    noxPosition = { x = 18, y = 75 },
+    searchPosition = { x = 300, y = 50 },
     guiKeybind = "RightShift",
-
     guiSounds = false,
     soundId = "0",
-
     menuSounds = false,
     openSoundId = "0",
     closeSoundId = "0",
-
     soundVolume = 0.5,
-
     searchExpanded = false
 }
 
 local function loadConfig()
-    if not canUseFiles() then
-        return
-    end
-
-    if not isfile(CONFIG_FILE) then
-        return
-    end
-
+    if not canUseFiles() then return end
+    if not isfile(CONFIG_FILE) then return end
     local ok, data = pcall(function()
         return HttpService:JSONDecode(readfile(CONFIG_FILE))
     end)
-
-    if not ok or type(data) ~= "table" then
-        return
-    end
-
+    if not ok or type(data) ~= "table" then return end
     for k, v in pairs(data) do
         if type(config[k]) == "table" and type(v) == "table" then
             for kk, vv in pairs(v) do
@@ -240,24 +123,13 @@ end
 local saveQueued = false
 
 local function saveConfig()
-    if not canUseFiles() then
-        return
-    end
-
-    if saveQueued then
-        return
-    end
-
+    if not canUseFiles() then return end
+    if saveQueued then return end
     saveQueued = true
-
     task.delay(0.12, function()
         pcall(function()
-            writefile(
-                CONFIG_FILE,
-                HttpService:JSONEncode(config)
-            )
+            writefile(CONFIG_FILE, HttpService:JSONEncode(config))
         end)
-
         saveQueued = false
     end)
 end
@@ -265,72 +137,43 @@ end
 loadConfig()
 
 local function repairConfig()
-    for _, key in ipairs({
-        "features",
-        "tabs",
-        "positions",
-        "keybinds",
-        "settings"
-    }) do
+    for _, key in ipairs({"features", "tabs", "positions", "keybinds", "settings"}) do
         if type(config[key]) ~= "table" then
             config[key] = {}
         end
     end
-
     if type(config.noxPosition) ~= "table" then
-        config.noxPosition = {
-            x = 18,
-            y = 75
-        }
+        config.noxPosition = { x = 18, y = 75 }
     end
-
     if type(config.searchPosition) ~= "table" then
-        config.searchPosition = {
-            x = 300,
-            y = 50
-        }
+        config.searchPosition = { x = 300, y = 50 }
     end
-
     config.noxPosition.x = tonumber(config.noxPosition.x) or 18
     config.noxPosition.y = tonumber(config.noxPosition.y) or 75
-
     config.searchPosition.x = tonumber(config.searchPosition.x) or 300
     config.searchPosition.y = tonumber(config.searchPosition.y) or 50
-
     if type(config.guiKeybind) ~= "string" or config.guiKeybind == "" then
         config.guiKeybind = "RightShift"
     end
-
     if type(config.guiSounds) ~= "boolean" then
         config.guiSounds = false
     end
-
     if type(config.soundId) ~= "string" then
         config.soundId = tostring(config.soundId or "0")
     end
-
     if type(config.menuSounds) ~= "boolean" then
         config.menuSounds = false
     end
-
     if type(config.openSoundId) ~= "string" then
         config.openSoundId = tostring(config.openSoundId or "0")
     end
-
     if type(config.closeSoundId) ~= "string" then
         config.closeSoundId = tostring(config.closeSoundId or "0")
     end
-
-    config.soundVolume = math.clamp(
-        tonumber(config.soundVolume) or 0.5,
-        0,
-        1
-    )
-
+    config.soundVolume = math.clamp(tonumber(config.soundVolume) or 0.5, 0, 1)
     if type(config.searchExpanded) ~= "boolean" then
         config.searchExpanded = false
     end
-
     config.settings["noxvape"] = config.settings["noxvape"] or {}
 end
 
@@ -338,121 +181,72 @@ repairConfig()
 
 -- Config helpers
 local function ensureCategoryData(cat)
-    if type(config.features[cat]) ~= "table" then
-        config.features[cat] = {}
-    end
-
-    if type(config.keybinds[cat]) ~= "table" then
-        config.keybinds[cat] = {}
-    end
-
-    if type(config.settings[cat]) ~= "table" then
-        config.settings[cat] = {}
-    end
+    if type(config.features[cat]) ~= "table" then config.features[cat] = {} end
+    if type(config.keybinds[cat]) ~= "table" then config.keybinds[cat] = {} end
+    if type(config.settings[cat]) ~= "table" then config.settings[cat] = {} end
 end
 
 local function colorToData(value)
-    if typeof(value) ~= "Color3" then
-        return value
-    end
-
-    return {
-        r = value.R,
-        g = value.G,
-        b = value.B
-    }
+    if typeof(value) ~= "Color3" then return value end
+    return { r = value.R, g = value.G, b = value.B }
 end
 
 local function dataToColor(value)
-    if type(value) == "table"
-        and type(value.r) == "number"
-        and type(value.g) == "number"
-        and type(value.b) == "number" then
-
-        return Color3.new(
-            math.clamp(value.r, 0, 1),
-            math.clamp(value.g, 0, 1),
-            math.clamp(value.b, 0, 1)
-        )
+    if type(value) == "table" and type(value.r) == "number"
+        and type(value.g) == "number" and type(value.b) == "number" then
+        return Color3.new(math.clamp(value.r, 0, 1), math.clamp(value.g, 0, 1), math.clamp(value.b, 0, 1))
     end
-
     return value
 end
 
 local function getFeatureState(cat, name)
     ensureCategoryData(cat)
-
     local value = config.features[cat][name]
-
     return type(value) == "boolean" and value or false
 end
 
 local function getKeybind(cat, name)
     ensureCategoryData(cat)
-
     local value = config.keybinds[cat][name]
-
-    if type(value) == "string" and value ~= "" then
-        return value
-    end
-
+    if type(value) == "string" and value ~= "" then return value end
     return nil
 end
 
 local function getSetting(cat, feat, key, default)
     ensureCategoryData(cat)
-
     if type(config.settings[cat][feat]) ~= "table" then
         config.settings[cat][feat] = {}
     end
-
     local value = config.settings[cat][feat][key]
-
     if value == nil then
         config.settings[cat][feat][key] = colorToData(default)
         return default
     end
-
     return dataToColor(value)
 end
 
 local function setSetting(cat, feat, key, value)
     ensureCategoryData(cat)
-
     if type(config.settings[cat][feat]) ~= "table" then
         config.settings[cat][feat] = {}
     end
-
     config.settings[cat][feat][key] = colorToData(value)
-
     saveConfig()
 end
 
 local function getPosition(name, dx, dy)
     local p = config.positions[name]
-
-    if type(p) == "table"
-        and type(p.x) == "number"
-        and type(p.y) == "number" then
-
+    if type(p) == "table" and type(p.x) == "number" and type(p.y) == "number" then
         return p.x, p.y
     end
-
     return dx, dy
 end
 
 -- Screen GUI
 local oldGui = playerGui:FindFirstChild("Nox")
-
-if oldGui then
-    oldGui:Destroy()
-end
-
+if oldGui then oldGui:Destroy() end
 local oldBlur = Lighting:FindFirstChild("NoxBlur")
-
-if oldBlur then
-    oldBlur:Destroy()
-end
+if oldBlur then oldBlur:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "Nox"
@@ -486,61 +280,35 @@ local MAX_NOTIFS = 5
 local PogchampAsset = nil
 
 task.spawn(function()
-    if type(request) == "function"
-        and type(writefile) == "function" then
-
+    if type(request) == "function" and type(writefile) == "function" then
         pcall(function()
-            local response = request({
-                Url = POGCHAMP_URL,
-                Method = "GET"
-            })
-
-            if response
-                and response.Success
-                and response.Body then
-
-                writefile(
-                    "nox_pogchamp.png",
-                    response.Body
-                )
-
+            local response = request({ Url = POGCHAMP_URL, Method = "GET" })
+            if response and response.Success and response.Body then
+                writefile("nox_pogchamp.png", response.Body)
                 local asset = getCustomAsset("nox_pogchamp.png")
-
-                if asset then
-                    PogchampAsset = asset
-                end
+                if asset then PogchampAsset = asset end
             end
         end)
     end
-
-    PogchampAsset =
-        PogchampAsset
-        or "rbxassetid://10340520068"
+    PogchampAsset = PogchampAsset or "rbxassetid://10340520068"
 end)
 
 local function createNotification(msg, kind)
-    if not screenGui or not screenGui.Parent then
-        return
-    end
+    if not screenGui or not screenGui.Parent then return end
 
     notifCounter += 1
 
     while #activeNotifs >= MAX_NOTIFS do
         local old = table.remove(activeNotifs, 1)
-
-        if old and old.Parent then
-            old:Destroy()
-        end
+        if old and old.Parent then old:Destroy() end
     end
 
-    local accent =
-        kind == "warning"
-        and Colors.Warning
-        or kind == "error"
-        and Colors.Error
+    local accent = kind == "warning" and Colors.Warning
+        or kind == "error" and Colors.Error
         or Colors.Accent
 
     local notif = Instance.new("Frame")
+    notif.Name = "Notification"
     notif.BackgroundColor3 = Colors.Panel
     notif.BackgroundTransparency = 0.12
     notif.BorderSizePixel = 0
@@ -591,45 +359,41 @@ local function createNotification(msg, kind)
     bar.ZIndex = 50004
     bar.Parent = notif
 
+    -- Animate In: Slide from right + Springy scale
     notif.Position = UDim2.fromOffset(360, 0)
+    notif.Size = UDim2.fromOffset(330 * 0.8, 50 * 0.8)
 
-    tw(
+    tw(notif, { Position = UDim2.fromOffset(0, 0) }, 0.25)
+
+    local springTween = TweenService:Create(
         notif,
-        {
-            Position = UDim2.fromOffset(0, 0)
-        },
-        0.22
+        TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+        { Size = UDim2.fromOffset(330, 50) }
     )
+    springTween:Play()
 
     local duration = 2.4
 
     TweenService:Create(
         bar,
         TweenInfo.new(duration, Enum.EasingStyle.Linear),
-        {
-            Size = UDim2.new(0, 0, 0, 3)
-        }
+        { Size = UDim2.new(0, 0, 0, 3) }
     ):Play()
 
+    -- Animate Out
     task.delay(duration + 0.15, function()
-        if not notif.Parent then
-            return
-        end
+        if not notif.Parent then return end
 
-        local tween = tw(
+        local slideOut = tw(notif, { Position = UDim2.fromOffset(360, 0) }, 0.2)
+        TweenService:Create(
             notif,
-            {
-                Position = UDim2.fromOffset(360, 0)
-            },
-            0.18
-        )
+            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            { Size = UDim2.fromOffset(330 * 0.8, 50 * 0.8) }
+        ):Play()
 
-        if tween then
-            tween.Completed:Connect(function()
-                if notif.Parent then
-                    notif:Destroy()
-                end
-
+        if slideOut then
+            slideOut.Completed:Connect(function()
+                if notif.Parent then notif:Destroy() end
                 for i, value in ipairs(activeNotifs) do
                     if value == notif then
                         table.remove(activeNotifs, i)
@@ -641,17 +405,9 @@ local function createNotification(msg, kind)
     end)
 end
 
-local function notifyEnabled(message)
-    createNotification(message, "enabled")
-end
-
-local function notifyWarning(message)
-    createNotification(message, "warning")
-end
-
-local function notifyError(message)
-    createNotification(message, "error")
-end
+local function notifyEnabled(message) createNotification(message, "enabled") end
+local function notifyWarning(message) createNotification(message, "warning") end
+local function notifyError(message) createNotification(message, "error") end
 
 -- Tooltip
 local tooltip = nil
@@ -659,35 +415,23 @@ local tooltipToken = 0
 
 local function hideTooltip()
     tooltipToken += 1
-
     if tooltip then
-        pcall(function()
-            tooltip:Destroy()
-        end)
-
+        pcall(function() tooltip:Destroy() end)
         tooltip = nil
     end
 end
 
 local function showTooltip(text)
     hideTooltip()
-
     tooltipToken += 1
-
     local token = tooltipToken
 
     task.delay(0.08, function()
-        if token ~= tooltipToken then
-            return
-        end
-
+        if token ~= tooltipToken then return end
         local camera = workspace.CurrentCamera
+        if not camera then return end
 
-        if not camera then
-            return
-        end
-
-        local mouse = UserInputService:GetMouseLocation()
+        local mouse = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED: Use GUI-space mouse
 
         local frame = Instance.new("Frame")
         frame.Name = "Tooltip"
@@ -717,58 +461,35 @@ local function showTooltip(text)
         task.wait()
 
         if token ~= tooltipToken then
-            if frame.Parent then
-                frame:Destroy()
-            end
-
+            if frame.Parent then frame:Destroy() end
             return
         end
 
         local viewport = camera.ViewportSize
-
         local width = frame.AbsoluteSize.X
         local height = frame.AbsoluteSize.Y
-
         local x = mouse.X + 14
         local y = mouse.Y + 16
 
         if x + width > viewport.X - 8 then
             x = mouse.X - width - 14
         end
-
         if y + height > viewport.Y - 8 then
             y = mouse.Y - height - 16
         end
 
         frame.Position = UDim2.fromOffset(
-            math.clamp(
-                x,
-                8,
-                math.max(8, viewport.X - width - 8)
-            ),
-            math.clamp(
-                y,
-                8,
-                math.max(8, viewport.Y - height - 8)
-            )
+            math.clamp(x, 8, math.max(8, viewport.X - width - 8)),
+            math.clamp(y, 8, math.max(8, viewport.Y - height - 8))
         )
-
         tooltip = frame
     end)
 end
 
 local function addTooltip(obj, text)
-    if not text or text == "" then
-        return
-    end
-
-    obj.MouseEnter:Connect(function()
-        showTooltip(text)
-    end)
-
-    obj.MouseLeave:Connect(function()
-        hideTooltip()
-    end)
+    if not text or text == "" then return end
+    obj.MouseEnter:Connect(function() showTooltip(text) end)
+    obj.MouseLeave:Connect(function() hideTooltip() end)
 end
 
 -- Draggable
@@ -776,14 +497,12 @@ local function makeDraggable(obj, handle, posName, isNox)
     local dragging = false
     local dragStart
     local startPos
-
     local mouseConnection
     local endConnection
 
     handle.InputBegan:Connect(function(input)
         if input.UserInputType ~= Enum.UserInputType.MouseButton1
             and input.UserInputType ~= Enum.UserInputType.MouseButton2 then
-
             return
         end
 
@@ -793,42 +512,23 @@ local function makeDraggable(obj, handle, posName, isNox)
 
         hideTooltip()
 
-        if mouseConnection then
-            mouseConnection:Disconnect()
-        end
-
-        if endConnection then
-            endConnection:Disconnect()
-        end
+        if mouseConnection then mouseConnection:Disconnect() end
+        if endConnection then endConnection:Disconnect() end
 
         mouseConnection = UserInputService.InputChanged:Connect(function(inputChanged)
-            if not dragging
-                or inputChanged.UserInputType ~= Enum.UserInputType.MouseMovement then
-
+            if not dragging or inputChanged.UserInputType ~= Enum.UserInputType.MouseMovement then
                 return
             end
 
             local delta = inputChanged.Position - dragStart
-
             local x = startPos.X.Offset + delta.X
             local y = startPos.Y.Offset + delta.Y
 
             local camera = workspace.CurrentCamera
-
             if camera then
                 local viewport = camera.ViewportSize
-
-                x = math.clamp(
-                    x,
-                    0,
-                    math.max(0, viewport.X - obj.AbsoluteSize.X)
-                )
-
-                y = math.clamp(
-                    y,
-                    0,
-                    math.max(0, viewport.Y - obj.AbsoluteSize.Y)
-                )
+                x = math.clamp(x, 0, math.max(0, viewport.X - obj.AbsoluteSize.X))
+                y = math.clamp(y, 0, math.max(0, viewport.Y - obj.AbsoluteSize.Y))
             end
 
             obj.Position = UDim2.fromOffset(x, y)
@@ -837,39 +537,21 @@ local function makeDraggable(obj, handle, posName, isNox)
         endConnection = UserInputService.InputEnded:Connect(function(inputEnded)
             if inputEnded.UserInputType ~= Enum.UserInputType.MouseButton1
                 and inputEnded.UserInputType ~= Enum.UserInputType.MouseButton2 then
-
                 return
             end
 
             dragging = false
 
-            if mouseConnection then
-                mouseConnection:Disconnect()
-                mouseConnection = nil
-            end
-
-            if endConnection then
-                endConnection:Disconnect()
-                endConnection = nil
-            end
+            if mouseConnection then mouseConnection:Disconnect(); mouseConnection = nil end
+            if endConnection then endConnection:Disconnect(); endConnection = nil end
 
             if isNox then
-                config.noxPosition = {
-                    x = obj.Position.X.Offset,
-                    y = obj.Position.Y.Offset
-                }
+                config.noxPosition = { x = obj.Position.X.Offset, y = obj.Position.Y.Offset }
             elseif posName == "searchBar" then
-                config.searchPosition = {
-                    x = obj.Position.X.Offset,
-                    y = obj.Position.Y.Offset
-                }
+                config.searchPosition = { x = obj.Position.X.Offset, y = obj.Position.Y.Offset }
             else
-                config.positions[posName] = {
-                    x = obj.Position.X.Offset,
-                    y = obj.Position.Y.Offset
-                }
+                config.positions[posName] = { x = obj.Position.X.Offset, y = obj.Position.Y.Offset }
             end
-
             saveConfig()
         end)
     end)
@@ -888,36 +570,23 @@ end
 
 function Features.isEnabled(cat, name)
     local data = Features.get(cat, name)
-
     if data and data.getState then
         return data.getState()
     end
-
     return getFeatureState(cat, name)
 end
 
 function Features.set(cat, name, enabled)
     local data = Features.get(cat, name)
-
     if not data then
         ensureCategoryData(cat)
-
-        config.features[cat][name] =
-            enabled and true or false
-
+        config.features[cat][name] = enabled and true or false
         saveConfig()
-
         return false
     end
 
-    local current =
-        data.getState
-        and data.getState()
-        or false
-
-    if current == enabled then
-        return true
-    end
+    local current = data.getState and data.getState() or false
+    if current == enabled then return true end
 
     if data.toggle then
         data.toggle()
@@ -925,32 +594,20 @@ function Features.set(cat, name, enabled)
     end
 
     ensureCategoryData(cat)
-
-    config.features[cat][name] =
-        enabled and true or false
+    config.features[cat][name] = enabled and true or false
 
     if data.button then
-        data.button.BackgroundColor3 =
-            enabled
-            and Colors.Accent
-            or Colors.Action
+        data.button.BackgroundColor3 = enabled and Colors.Accent or Colors.Action
     end
-
     saveConfig()
-
     return true
 end
 
 function Features.forceOff(cat, name)
     local data = Features.get(cat, name)
-
     ensureCategoryData(cat)
 
-    if data
-        and data.getState
-        and data.getState()
-        and type(data.action) == "function" then
-
+    if data and data.getState and data.getState() and type(data.action) == "function" then
         pcall(data.action, false)
     end
 
@@ -965,7 +622,6 @@ function Features.forceOff(cat, name)
     end
 
     saveConfig()
-
     return true
 end
 
@@ -993,37 +649,20 @@ menuSoundObj.Volume = config.soundVolume
 menuSoundObj.Parent = screenGui
 
 local function playButtonSound()
-    if not config.guiSounds then
-        return
-    end
-
+    if not config.guiSounds then return end
     local id = config.soundId
-
     if id and id ~= "" and id ~= "0" then
         soundObj.SoundId = "rbxassetid://" .. id
-
-        pcall(function()
-            soundObj:Play()
-        end)
+        pcall(function() soundObj:Play() end)
     end
 end
 
 local function playMenuSound(isOpen)
-    if not config.menuSounds then
-        return
-    end
-
-    local id =
-        isOpen
-        and config.openSoundId
-        or config.closeSoundId
-
+    if not config.menuSounds then return end
+    local id = isOpen and config.openSoundId or config.closeSoundId
     if id and id ~= "" and id ~= "0" then
         menuSoundObj.SoundId = "rbxassetid://" .. id
-
-        pcall(function()
-            menuSoundObj:Play()
-        end)
+        pcall(function() menuSoundObj:Play() end)
     end
 end
 
@@ -1048,19 +687,8 @@ blurEffect.Parent = Lighting
 local tabPanel
 
 local function updateBlur()
-    if not tabPanel then
-        return
-    end
-
-    blurEffect.Enabled =
-        getSetting(
-            "noxvape",
-            "blur",
-            "enabled",
-            false
-        )
-        and tabPanel.Visible
-
+    if not tabPanel then return end
+    blurEffect.Enabled = getSetting("noxvape", "blur", "enabled", false) and tabPanel.Visible
     dimFrame.Visible = tabPanel.Visible
 end
 
@@ -1069,10 +697,7 @@ local disabledGuiStates = {}
 local otherGuisDisabled = false
 
 local function disableOtherScreenGuis()
-    if otherGuisDisabled then
-        return
-    end
-
+    if otherGuisDisabled then return end
     otherGuisDisabled = true
     disabledGuiStates = {}
 
@@ -1085,74 +710,32 @@ local function disableOtherScreenGuis()
 end
 
 local function restoreOtherScreenGuis()
-    if not otherGuisDisabled then
-        return
-    end
-
+    if not otherGuisDisabled then return end
     for gui, previous in pairs(disabledGuiStates) do
         if gui and gui.Parent then
-            pcall(function()
-                gui.Enabled = previous
-            end)
+            pcall(function() gui.Enabled = previous end)
         end
     end
-
     disabledGuiStates = {}
     otherGuisDisabled = false
 end
 
 local function selfDestruct()
     restoreOtherScreenGuis()
-
-    createNotification(
-        "Self destruct initiated. Goodbye!",
-        "warning"
-    )
-
+    createNotification("Self destruct initiated. Goodbye!", "warning")
     task.wait(0.35)
 
-    pcall(function()
-        if soundObj then
-            soundObj:Stop()
-            soundObj:Destroy()
-        end
-    end)
-
-    pcall(function()
-        if menuSoundObj then
-            menuSoundObj:Stop()
-            menuSoundObj:Destroy()
-        end
-    end)
-
-    pcall(function()
-        if blurEffect then
-            blurEffect.Enabled = false
-            blurEffect:Destroy()
-        end
-    end)
-
-    pcall(function()
-        if dimFrame then
-            dimFrame:Destroy()
-        end
-    end)
-
+    pcall(function() if soundObj then soundObj:Stop(); soundObj:Destroy() end end)
+    pcall(function() if menuSoundObj then menuSoundObj:Stop(); menuSoundObj:Destroy() end end)
+    pcall(function() if blurEffect then blurEffect.Enabled = false; blurEffect:Destroy() end end)
+    pcall(function() if dimFrame then dimFrame:Destroy() end end)
     pcall(function()
         for _, notification in ipairs(activeNotifs) do
-            if notification and notification.Parent then
-                notification:Destroy()
-            end
+            if notification and notification.Parent then notification:Destroy() end
         end
-
         activeNotifs = {}
     end)
-
-    pcall(function()
-        if screenGui then
-            screenGui:Destroy()
-        end
-    end)
+    pcall(function() if screenGui then screenGui:Destroy() end end)
 
     buttonData = {}
     categoryFrames = {}
@@ -1166,58 +749,34 @@ local settingsVisible = false
 local filterButtons
 
 local function setMenuVisible(visible)
-    if not tabPanel then
-        return
-    end
-
+    if not tabPanel then return end
     local was = tabPanel.Visible
-
     tabPanel.Visible = visible
     dimFrame.Visible = visible
 
     if settingsWindow then
-        settingsWindow.Visible =
-            visible and settingsVisible
+        settingsWindow.Visible = visible and settingsVisible
     end
 
     for _, card in pairs(categoryFrames) do
         local categoryName = card.Name
-
         if card and card.Parent then
-            card.Visible =
-                visible
-                and categoryStates[categoryName]
+            card.Visible = visible and categoryStates[categoryName]
         end
     end
 
     local searchFrame = screenGui:FindFirstChild("SearchBar")
-
-    if searchFrame then
-        searchFrame.Visible = visible
-    end
+    if searchFrame then searchFrame.Visible = visible end
 
     if visible then
         disableOtherScreenGuis()
-
-        local searchBox =
-            searchFrame
-            and searchFrame:FindFirstChildOfClass("TextBox")
-
-        if searchBox and searchBox.Text ~= "" then
-            filterButtons(searchBox.Text)
-        end
-
-        if not was then
-            playMenuSound(true)
-        end
+        local searchBox = searchFrame and searchFrame:FindFirstChildOfClass("TextBox")
+        if searchBox and searchBox.Text ~= "" then filterButtons(searchBox.Text) end
+        if not was then playMenuSound(true) end
     else
         restoreOtherScreenGuis()
-
-        if was then
-            playMenuSound(false)
-        end
+        if was then playMenuSound(false) end
     end
-
     updateBlur()
 end
 
@@ -1234,15 +793,9 @@ local function init()
     for categoryIndex, categoryDefinition in ipairs(_categories) do
         local categoryName = categoryDefinition.name
         local items = categoryDefinition.items
-
         ensureCategoryData(categoryName)
 
-        local savedX, savedY =
-            getPosition(
-                categoryName,
-                240 + ((categoryIndex - 1) * 218),
-                75
-            )
+        local savedX, savedY = getPosition(categoryName, 240 + ((categoryIndex - 1) * 218), 75)
 
         local card = Instance.new("Frame")
         card.Name = categoryName
@@ -1282,31 +835,13 @@ local function init()
         categoryLabel.ZIndex = 11021 + categoryIndex
         categoryLabel.Parent = header
 
-        makeDraggable(
-            card,
-            header,
-            categoryName,
-            false
-        )
+        makeDraggable(card, header, categoryName, false)
 
         header.MouseEnter:Connect(function()
-            tw(
-                header,
-                {
-                    BackgroundColor3 = Colors.PanelHover
-                },
-                0.08
-            )
+            tw(header, { BackgroundColor3 = Colors.PanelHover }, 0.08)
         end)
-
         header.MouseLeave:Connect(function()
-            tw(
-                header,
-                {
-                    BackgroundColor3 = Colors.Panel
-                },
-                0.08
-            )
+            tw(header, { BackgroundColor3 = Colors.Panel }, 0.08)
         end)
 
         local scroll = Instance.new("ScrollingFrame")
@@ -1339,10 +874,7 @@ local function init()
             local action = item.action or function() end
             local extraSettings = item.settings
 
-            local currentState =
-                isToggle
-                and getFeatureState(categoryName, itemName)
-                or false
+            local currentState = isToggle and getFeatureState(categoryName, itemName) or false
 
             local wrapper = Instance.new("Frame")
             wrapper.Name = itemName .. "_Wrapper"
@@ -1356,16 +888,7 @@ local function init()
             local button = Instance.new("TextButton")
             button.Name = itemName
             button.AutoButtonColor = false
-
-            button.BackgroundColor3 =
-                isToggle
-                and (
-                    currentState
-                    and Colors.Accent
-                    or Colors.Action
-                )
-                or Colors.Action
-
+            button.BackgroundColor3 = isToggle and (currentState and Colors.Accent or Colors.Action) or Colors.Action
             button.BackgroundTransparency = 0
             button.BorderSizePixel = 0
             button.Size = UDim2.new(1, 0, 0, 36)
@@ -1415,15 +938,9 @@ local function init()
 
             local function refreshColor()
                 if isToggle then
-                    button.BackgroundColor3 =
-                        currentState
-                        and Colors.Accent
-                        or Colors.Action
+                    button.BackgroundColor3 = currentState and Colors.Accent or Colors.Action
                 else
-                    button.BackgroundColor3 =
-                        hovering
-                        and Colors.ActionHover
-                        or Colors.Action
+                    button.BackgroundColor3 = hovering and Colors.ActionHover or Colors.Action
                 end
             end
 
@@ -1431,7 +948,6 @@ local function init()
                 hovering = true
                 refreshColor()
             end)
-
             button.MouseLeave:Connect(function()
                 hovering = false
                 refreshColor()
@@ -1442,44 +958,26 @@ local function init()
             local function performToggle()
                 if not isToggle then
                     local ok, result = pcall(action)
-
-                    if not ok then
-                        warn("[NoxLib]", result)
-                    end
-
+                    if not ok then warn("[NoxLib]", result) end
                     return
                 end
 
                 local newState = not currentState
+                local ok, result = pcall(action, newState)
+                local success = ok and result ~= false
 
-                local ok, result =
-                    pcall(action, newState)
-
-                local success =
-                    ok and result ~= false
-
-                if not ok then
-                    warn("[NoxLib]", result)
-                end
+                if not ok then warn("[NoxLib]", result) end
 
                 if success then
                     currentState = newState
-
-                    config.features[categoryName][itemName] =
-                        currentState
-
+                    config.features[categoryName][itemName] = currentState
                     refreshColor()
 
                     if currentState then
-                        notifyEnabled(
-                            itemName .. " enabled"
-                        )
+                        notifyEnabled(itemName .. " enabled")
                     else
-                        notifyWarning(
-                            itemName .. " disabled"
-                        )
+                        notifyWarning(itemName .. " disabled")
                     end
-
                     saveConfig()
                 else
                     refreshColor()
@@ -1493,9 +991,7 @@ local function init()
 
             button.MouseButton2Click:Connect(function()
                 hideTooltip()
-
-                settingsFrame.Visible =
-                    not settingsFrame.Visible
+                settingsFrame.Visible = not settingsFrame.Visible
             end)
 
             -- Keybind
@@ -1515,10 +1011,7 @@ local function init()
             keybindLabel.Text = "Bind"
             keybindLabel.Parent = keybindRow
 
-            addTooltip(
-                keybindLabel,
-                "Click to bind a key"
-            )
+            addTooltip(keybindLabel, "Click to bind a key")
 
             local keybindButton = Instance.new("TextButton")
             keybindButton.AutoButtonColor = false
@@ -1533,178 +1026,69 @@ local function init()
             keybindButton.TextColor3 = Colors.Text
             keybindButton.TextXAlignment = Enum.TextXAlignment.Center
             keybindButton.TextYAlignment = Enum.TextYAlignment.Center
-            keybindButton.Text =
-                getKeybind(
-                    categoryName,
-                    itemName
-                )
-                or "NONE"
+            keybindButton.Text = getKeybind(categoryName, itemName) or "NONE"
             keybindButton.Parent = keybindRow
 
             keybindButton.MouseEnter:Connect(function()
-                keybindButton.BackgroundColor3 =
-                    Colors.ActionHover
+                keybindButton.BackgroundColor3 = Colors.ActionHover
             end)
-
             keybindButton.MouseLeave:Connect(function()
-                keybindButton.BackgroundColor3 =
-                    Colors.Action
+                keybindButton.BackgroundColor3 = Colors.Action
             end)
 
-            addTooltip(
-                keybindButton,
-                "Backspace/Escape to clear"
-            )
+            addTooltip(keybindButton, "Backspace/Escape to clear")
 
             keybindButton.MouseButton1Click:Connect(function()
                 playButtonSound()
-
                 if waitingForBind then
-                    waitingForBind.button.Text =
-                        getKeybind(
-                            waitingForBind.category,
-                            waitingForBind.feature
-                        )
-                        or "NONE"
-
-                    waitingForBind.button.BackgroundColor3 =
-                        Colors.Action
+                    waitingForBind.button.Text = getKeybind(waitingForBind.category, waitingForBind.feature) or "NONE"
+                    waitingForBind.button.BackgroundColor3 = Colors.Action
                 end
-
-                waitingForBind = {
-                    category = categoryName,
-                    feature = itemName,
-                    button = keybindButton
-                }
-
+                waitingForBind = { category = categoryName, feature = itemName, button = keybindButton }
                 keybindButton.Text = "Press key..."
-                keybindButton.BackgroundColor3 =
-                    Colors.Accent
+                keybindButton.BackgroundColor3 = Colors.Accent
             end)
 
             -- Settings
             if type(extraSettings) == "table" then
                 for settingIndex, setting in ipairs(extraSettings) do
-                    if type(setting) ~= "table" then
-                        continue
-                    end
-
-                    local settingType =
-                        tostring(setting.type or "")
-
-                    local settingName =
-                        tostring(
-                            setting.name
-                            or setting.key
-                            or ("Setting " .. settingIndex)
-                        )
-
-                    local settingKey =
-                        tostring(
-                            setting.key
-                            or setting.name
-                            or ("setting" .. settingIndex)
-                        )
-
+                    if type(setting) ~= "table" then continue end
+                    local settingType = tostring(setting.type or "")
+                    local settingName = tostring(setting.name or setting.key or ("Setting " .. settingIndex))
+                    local settingKey = tostring(setting.key or setting.name or ("setting" .. settingIndex))
                     local order = 10 + settingIndex
 
                     -- Slider
                     if settingType == "slider" then
                         local min = tonumber(setting.min) or 0
                         local max = tonumber(setting.max) or 100
-
-                        if max < min then
-                            min, max = max, min
-                        end
-
-                        local default =
-                            tonumber(setting.default)
-
-                        if default == nil then
-                            default = min
-                        end
-
-                        default = math.clamp(
-                            default,
-                            min,
-                            max
-                        )
-
-                        local step =
-                            tonumber(setting.step)
-                            or 1
-
-                        if step <= 0 then
-                            step = 1
-                        end
-
-                        local current =
-                            tonumber(
-                                getSetting(
-                                    categoryName,
-                                    itemName,
-                                    settingKey,
-                                    default
-                                )
-                            )
-                            or default
+                        if max < min then min, max = max, min end
+                        local default = tonumber(setting.default)
+                        if default == nil then default = min end
+                        default = math.clamp(default, min, max)
+                        local step = tonumber(setting.step) or 1
+                        if step <= 0 then step = 1 end
+                        local current = tonumber(getSetting(categoryName, itemName, settingKey, default)) or default
 
                         local function roundToStep(value)
-                            value =
-                                math.clamp(
-                                    value,
-                                    min,
-                                    max
-                                )
-
-                            local steps =
-                                math.floor(
-                                    ((value - min) / step)
-                                    + 0.5
-                                )
-
-                            local result =
-                                min + (steps * step)
-
-                            return math.clamp(
-                                result,
-                                min,
-                                max
-                            )
+                            value = math.clamp(value, min, max)
+                            local steps = math.floor(((value - min) / step) + 0.5)
+                            local result = min + (steps * step)
+                            return math.clamp(result, min, max)
                         end
-
                         current = roundToStep(current)
 
                         local function formatValue(value)
-                            if step >= 1
-                                and step == math.floor(step) then
-
-                                return tostring(
-                                    math.floor(
-                                        value + 0.5
-                                    )
-                                )
+                            if step >= 1 and step == math.floor(step) then
+                                return tostring(math.floor(value + 0.5))
                             end
-
                             local decimals = 0
                             local temp = step
-
-                            while decimals < 10
-                                and math.abs(
-                                    temp
-                                    - math.floor(temp)
-                                ) > 0.000001 do
-
+                            while decimals < 10 and math.abs(temp - math.floor(temp)) > 0.000001 do
                                 temp *= 10
                                 decimals += 1
                             end
-
-                            return string.format(
-                                "%."
-                                    .. decimals
-                                    .. "f",
-                                value
-                            )
+                            return string.format("%." .. decimals .. "f", value)
                         end
 
                         local frame = Instance.new("Frame")
@@ -1719,78 +1103,33 @@ local function init()
                         label.FontFace = UIFont
                         label.TextSize = 14
                         label.TextColor3 = Colors.Text
-                        label.TextXAlignment =
-                            Enum.TextXAlignment.Left
-
-                        label.Text =
-                            settingName
-                            .. " ("
-                            .. formatValue(current)
-                            .. ")"
-
+                        label.TextXAlignment = Enum.TextXAlignment.Left
+                        label.Text = settingName .. " (" .. formatValue(current) .. ")"
                         label.Parent = frame
 
-                        local sliderBackground =
-                            Instance.new("Frame")
-
-                        sliderBackground.BackgroundColor3 =
-                            Colors.ToggleOff
-
+                        local sliderBackground = Instance.new("Frame")
+                        sliderBackground.BackgroundColor3 = Colors.ToggleOff
                         sliderBackground.BorderSizePixel = 0
-                        sliderBackground.Position =
-                            UDim2.fromOffset(0, 24)
-
-                        sliderBackground.Size =
-                            UDim2.new(1, 0, 0, 14)
-
+                        sliderBackground.Position = UDim2.fromOffset(0, 24)
+                        sliderBackground.Size = UDim2.new(1, 0, 0, 14)
                         sliderBackground.Parent = frame
 
                         local range = max - min
-
-                        local percentage =
-                            range == 0
-                            and 0
-                            or math.clamp(
-                                (current - min) / range,
-                                0,
-                                1
-                            )
+                        local percentage = range == 0 and 0 or math.clamp((current - min) / range, 0, 1)
 
                         local fill = Instance.new("Frame")
-                        fill.BackgroundColor3 =
-                            Colors.Accent
+                        fill.BackgroundColor3 = Colors.Accent
                         fill.BorderSizePixel = 0
-                        fill.Size =
-                            UDim2.new(
-                                percentage,
-                                0,
-                                1,
-                                0
-                            )
+                        fill.Size = UDim2.new(percentage, 0, 1, 0)
                         fill.Parent = sliderBackground
 
-                        local knob =
-                            Instance.new("TextButton")
-
+                        local knob = Instance.new("TextButton")
                         knob.AutoButtonColor = false
-                        knob.BackgroundColor3 =
-                            Colors.Accent
-
+                        knob.BackgroundColor3 = Colors.Accent
                         knob.BorderSizePixel = 0
-                        knob.AnchorPoint =
-                            Vector2.new(0.5, 0.5)
-
-                        knob.Position =
-                            UDim2.new(
-                                percentage,
-                                0,
-                                0.5,
-                                0
-                            )
-
-                        knob.Size =
-                            UDim2.fromOffset(12, 16)
-
+                        knob.AnchorPoint = Vector2.new(0.5, 0.5)
+                        knob.Position = UDim2.new(percentage, 0, 0.5, 0)
+                        knob.Size = UDim2.fromOffset(12, 16)
                         knob.Text = ""
                         knob.Parent = sliderBackground
 
@@ -1798,578 +1137,239 @@ local function init()
 
                         local function updateSlider(value)
                             value = roundToStep(value)
-
-                            setSetting(
-                                categoryName,
-                                itemName,
-                                settingKey,
-                                value
-                            )
-
-                            local pct =
-                                range == 0
-                                and 0
-                                or math.clamp(
-                                    (value - min) / range,
-                                    0,
-                                    1
-                                )
-
-                            fill.Size =
-                                UDim2.new(
-                                    pct,
-                                    0,
-                                    1,
-                                    0
-                                )
-
-                            knob.Position =
-                                UDim2.new(
-                                    pct,
-                                    0,
-                                    0.5,
-                                    0
-                                )
-
-                            label.Text =
-                                settingName
-                                .. " ("
-                                .. formatValue(value)
-                                .. ")"
-
-                            safeCall(
-                                setting.onChanged
-                                or setting.action,
-                                value
-                            )
+                            setSetting(categoryName, itemName, settingKey, value)
+                            local pct = range == 0 and 0 or math.clamp((value - min) / range, 0, 1)
+                            fill.Size = UDim2.new(pct, 0, 1, 0)
+                            knob.Position = UDim2.new(pct, 0, 0.5, 0)
+                            label.Text = settingName .. " (" .. formatValue(value) .. ")"
+                            safeCall(setting.onChanged or setting.action, value)
                         end
 
-                        knob.MouseButton1Down:Connect(function()
-                            dragging = true
-                        end)
+                        knob.MouseButton1Down:Connect(function() dragging = true end)
 
                         sliderBackground.InputBegan:Connect(function(input)
-                            if input.UserInputType
-                                ~= Enum.UserInputType.MouseButton1 then
-
-                                return
-                            end
-
+                            if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
                             dragging = true
-
-                            local width =
-                                sliderBackground.AbsoluteSize.X
-
+                            local width = sliderBackground.AbsoluteSize.X
                             if width > 0 then
-                                local position =
-                                    UserInputService:GetMouseLocation().X
-                                    - sliderBackground.AbsolutePosition.X
-
-                                updateSlider(
-                                    min
-                                    + math.clamp(
-                                        position / width,
-                                        0,
-                                        1
-                                    ) * range
-                                )
+                                local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                                local position = mousePos.X - sliderBackground.AbsolutePosition.X
+                                updateSlider(min + math.clamp(position / width, 0, 1) * range)
                             end
                         end)
 
                         local sliderConnection
-
-                        sliderConnection =
-                            UserInputService.InputChanged:Connect(
-                                function(input)
-                                    if not dragging
-                                        or input.UserInputType
-                                            ~= Enum.UserInputType.MouseMovement then
-
-                                        return
-                                    end
-
-                                    if not sliderBackground.Parent then
-                                        if sliderConnection then
-                                            sliderConnection:Disconnect()
-                                        end
-
-                                        return
-                                    end
-
-                                    local width =
-                                        sliderBackground.AbsoluteSize.X
-
-                                    if width <= 0 then
-                                        return
-                                    end
-
-                                    local position =
-                                        UserInputService:GetMouseLocation().X
-                                        - sliderBackground.AbsolutePosition.X
-
-                                    updateSlider(
-                                        min
-                                        + math.clamp(
-                                            position / width,
-                                            0,
-                                            1
-                                        ) * range
-                                    )
-                                end
-                            )
+                        sliderConnection = UserInputService.InputChanged:Connect(function(input)
+                            if not dragging or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+                            if not sliderBackground.Parent then
+                                if sliderConnection then sliderConnection:Disconnect() end
+                                return
+                            end
+                            local width = sliderBackground.AbsoluteSize.X
+                            if width <= 0 then return end
+                            local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                            local position = mousePos.X - sliderBackground.AbsolutePosition.X
+                            updateSlider(min + math.clamp(position / width, 0, 1) * range)
+                        end)
 
                         UserInputService.InputEnded:Connect(function(input)
-                            if input.UserInputType
-                                == Enum.UserInputType.MouseButton1 then
-
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 then
                                 dragging = false
                             end
                         end)
 
                     -- Color picker
                     elseif settingType == "colorpicker" then
-                        local default =
-                            typeof(setting.default) == "Color3"
-                            and setting.default
-                            or Color3.fromRGB(
-                                255,
-                                255,
-                                255
-                            )
+                        local default = typeof(setting.default) == "Color3" and setting.default or Color3.fromRGB(255, 255, 255)
+                        local current = getSetting(categoryName, itemName, settingKey, default)
+                        if typeof(current) ~= "Color3" then current = default end
 
-                        local current =
-                            getSetting(
-                                categoryName,
-                                itemName,
-                                settingKey,
-                                default
-                            )
+                        local hue, saturation, value = Color3.toHSV(current)
 
-                        if typeof(current) ~= "Color3" then
-                            current = default
-                        end
-
-                        local hue, saturation, value =
-                            Color3.toHSV(current)
-
-                        local frame =
-                            Instance.new("Frame")
-
+                        local frame = Instance.new("Frame")
                         frame.BackgroundTransparency = 1
-                        frame.Size =
-                            UDim2.new(1, 0, 0, 38)
-                        frame.AutomaticSize =
-                            Enum.AutomaticSize.Y
+                        frame.Size = UDim2.new(1, 0, 0, 38)
+                        frame.AutomaticSize = Enum.AutomaticSize.Y
                         frame.LayoutOrder = order
                         frame.Parent = settingsFrame
 
-                        local label =
-                            Instance.new("TextLabel")
-
+                        local label = Instance.new("TextLabel")
                         label.BackgroundTransparency = 1
-                        label.Size =
-                            UDim2.new(0.55, 0, 0, 38)
+                        label.Size = UDim2.new(0.55, 0, 0, 38)
                         label.FontFace = UIFont
                         label.TextSize = 16
-                        label.TextColor3 =
-                            Colors.Text
-                        label.TextXAlignment =
-                            Enum.TextXAlignment.Left
-                        label.TextYAlignment =
-                            Enum.TextYAlignment.Center
+                        label.TextColor3 = Colors.Text
+                        label.TextXAlignment = Enum.TextXAlignment.Left
+                        label.TextYAlignment = Enum.TextYAlignment.Center
                         label.Text = settingName
                         label.Parent = frame
 
-                        local preview =
-                            Instance.new("TextButton")
-
+                        local preview = Instance.new("TextButton")
                         preview.Name = "ColorPreview"
                         preview.AutoButtonColor = false
-                        preview.BackgroundColor3 =
-                            current
+                        preview.BackgroundColor3 = current
                         preview.BorderSizePixel = 0
-                        preview.AnchorPoint =
-                            Vector2.new(1, 0)
-                        preview.Position =
-                            UDim2.new(1, 0, 0, 5)
-                        preview.Size =
-                            UDim2.fromOffset(64, 28)
+                        preview.AnchorPoint = Vector2.new(1, 0)
+                        preview.Position = UDim2.new(1, 0, 0, 5)
+                        preview.Size = UDim2.fromOffset(64, 28)
                         preview.Text = ""
                         preview.Parent = frame
 
-                        local previewStroke =
-                            Instance.new("UIStroke")
-
-                        previewStroke.Color =
-                            Color3.fromRGB(
-                                35,
-                                40,
-                                46
-                            )
-
+                        local previewStroke = Instance.new("UIStroke")
+                        previewStroke.Color = Color3.fromRGB(35, 40, 46)
                         previewStroke.Thickness = 1
                         previewStroke.Transparency = 0
                         previewStroke.Parent = preview
 
-                        local pickerFrame =
-                            Instance.new("Frame")
-
+                        local pickerFrame = Instance.new("Frame")
                         pickerFrame.Name = "ColorPicker"
-                        pickerFrame.BackgroundColor3 =
-                            Colors.Panel
+                        pickerFrame.BackgroundColor3 = Colors.Panel
                         pickerFrame.BorderSizePixel = 0
-                        pickerFrame.Position =
-                            UDim2.fromOffset(0, 42)
-                        pickerFrame.Size =
-                            UDim2.fromOffset(194, 190)
+                        pickerFrame.Position = UDim2.fromOffset(0, 42)
+                        pickerFrame.Size = UDim2.fromOffset(194, 190)
                         pickerFrame.Visible = false
                         pickerFrame.ZIndex = 25000
                         pickerFrame.Parent = frame
 
-                        local pickerPadding =
-                            Instance.new("UIPadding")
+                        local pickerPadding = Instance.new("UIPadding")
+                        pickerPadding.PaddingTop = UDim.new(0, 8)
+                        pickerPadding.PaddingBottom = UDim.new(0, 8)
+                        pickerPadding.PaddingLeft = UDim.new(0, 8)
+                        pickerPadding.PaddingRight = UDim.new(0, 8)
+                        pickerPadding.Parent = pickerFrame
 
-                        pickerPadding.PaddingTop =
-                            UDim.new(0, 8)
-
-                        pickerPadding.PaddingBottom =
-                            UDim.new(0, 8)
-
-                        pickerPadding.PaddingLeft =
-                            UDim.new(0, 8)
-
-                        pickerPadding.PaddingRight =
-                            UDim.new(0, 8)
-
-                        pickerPadding.Parent =
-                            pickerFrame
-
-                        local wheel =
-                            Instance.new("ImageButton")
-
+                        local wheel = Instance.new("ImageButton")
                         wheel.Name = "ColorWheel"
                         wheel.AutoButtonColor = false
                         wheel.BackgroundTransparency = 1
-                        wheel.Size =
-                            UDim2.fromOffset(150, 150)
-                        wheel.Position =
-                            UDim2.fromOffset(8, 8)
+                        wheel.Size = UDim2.fromOffset(150, 150)
+                        wheel.Position = UDim2.fromOffset(8, 8)
                         wheel.ZIndex = 25001
                         wheel.Parent = pickerFrame
+                        wheel.Image = "rbxassetid://6020299385"
+                        wheel.ScaleType = Enum.ScaleType.Fit
 
-                        wheel.Image =
-                            "rbxassetid://6020299385"
-
-                        wheel.ScaleType =
-                            Enum.ScaleType.Fit
-
-                        local wheelPicker =
-                            Instance.new("Frame")
-
+                        local wheelPicker = Instance.new("Frame")
                         wheelPicker.Name = "Picker"
-                        wheelPicker.AnchorPoint =
-                            Vector2.new(0.5, 0.5)
-                        wheelPicker.Size =
-                            UDim2.fromOffset(10, 10)
-                        wheelPicker.BackgroundColor3 =
-                            Color3.new(1, 1, 1)
+                        wheelPicker.AnchorPoint = Vector2.new(0.5, 0.5)
+                        wheelPicker.Size = UDim2.fromOffset(10, 10)
+                        wheelPicker.BackgroundColor3 = Color3.new(1, 1, 1)
                         wheelPicker.BorderSizePixel = 1
-                        wheelPicker.BorderColor3 =
-                            Color3.new(0, 0, 0)
+                        wheelPicker.BorderColor3 = Color3.new(0, 0, 0)
                         wheelPicker.ZIndex = 25002
                         wheelPicker.Parent = wheel
 
-                        local darkness =
-                            Instance.new("Frame")
-
-                        darkness.Name =
-                            "DarknessPicker"
-
-                        darkness.BackgroundColor3 =
-                            Color3.new(1, 1, 1)
-
+                        local darkness = Instance.new("Frame")
+                        darkness.Name = "DarknessPicker"
+                        darkness.BackgroundColor3 = Color3.new(1, 1, 1)
                         darkness.BorderSizePixel = 0
-                        darkness.Position =
-                            UDim2.fromOffset(164, 8)
-
-                        darkness.Size =
-                            UDim2.fromOffset(16, 150)
-
+                        darkness.Position = UDim2.fromOffset(164, 8)
+                        darkness.Size = UDim2.fromOffset(16, 150)
                         darkness.ZIndex = 25001
                         darkness.Parent = pickerFrame
 
-                        local darknessGradient =
-                            Instance.new("UIGradient")
-
+                        local darknessGradient = Instance.new("UIGradient")
                         darknessGradient.Rotation = 90
-                        darknessGradient.Parent =
-                            darkness
+                        darknessGradient.Parent = darkness
 
-                        local darknessSlider =
-                            Instance.new("Frame")
-
-                        darknessSlider.Name =
-                            "Slider"
-
-                        darknessSlider.AnchorPoint =
-                            Vector2.new(0.5, 0.5)
-
-                        darknessSlider.Position =
-                            UDim2.new(
-                                0.5,
-                                0,
-                                1 - value,
-                                0
-                            )
-
-                        darknessSlider.Size =
-                            UDim2.new(
-                                1,
-                                6,
-                                0,
-                                4
-                            )
-
-                        darknessSlider.BackgroundColor3 =
-                            Color3.new(1, 1, 1)
-
+                        local darknessSlider = Instance.new("Frame")
+                        darknessSlider.Name = "Slider"
+                        darknessSlider.AnchorPoint = Vector2.new(0.5, 0.5)
+                        darknessSlider.Position = UDim2.new(0.5, 0, 1 - value, 0)
+                        darknessSlider.Size = UDim2.new(1, 6, 0, 4)
+                        darknessSlider.BackgroundColor3 = Color3.new(1, 1, 1)
                         darknessSlider.BorderSizePixel = 0
                         darknessSlider.ZIndex = 25002
-                        darknessSlider.Parent =
-                            darkness
+                        darknessSlider.Parent = darkness
 
-                        local colorDisplay =
-                            Instance.new("Frame")
-
-                        colorDisplay.Name =
-                            "ColorDisplay"
-
-                        colorDisplay.BackgroundColor3 =
-                            current
-
+                        local colorDisplay = Instance.new("Frame")
+                        colorDisplay.Name = "ColorDisplay"
+                        colorDisplay.BackgroundColor3 = current
                         colorDisplay.BorderSizePixel = 0
-                        colorDisplay.Position =
-                            UDim2.fromOffset(8, 166)
-
-                        colorDisplay.Size =
-                            UDim2.fromOffset(172, 12)
-
+                        colorDisplay.Position = UDim2.fromOffset(8, 166)
+                        colorDisplay.Size = UDim2.fromOffset(172, 12)
                         colorDisplay.ZIndex = 25002
-                        colorDisplay.Parent =
-                            pickerFrame
+                        colorDisplay.Parent = pickerFrame
 
-                        local colorDisplayStroke =
-                            Instance.new("UIStroke")
-
-                        colorDisplayStroke.Color =
-                            Color3.fromRGB(
-                                35,
-                                40,
-                                46
-                            )
-
+                        local colorDisplayStroke = Instance.new("UIStroke")
+                        colorDisplayStroke.Color = Color3.fromRGB(35, 40, 46)
                         colorDisplayStroke.Thickness = 1
-                        colorDisplayStroke.Parent =
-                            colorDisplay
+                        colorDisplayStroke.Parent = colorDisplay
 
                         local function updateWheelPicker()
-                            local centerX =
-                                wheel.AbsoluteSize.X / 2
-
-                            local centerY =
-                                wheel.AbsoluteSize.Y / 2
-
-                            local angle =
-                                (hue * math.pi * 2)
-                                - math.pi
-
-                            local radius =
-                                saturation
-                                * math.min(
-                                    wheel.AbsoluteSize.X,
-                                    wheel.AbsoluteSize.Y
-                                )
-                                / 2
-
-                            wheelPicker.Position =
-                                UDim2.fromOffset(
-                                    centerX
-                                        + math.cos(angle)
-                                        * radius,
-
-                                    centerY
-                                        + math.sin(angle)
-                                        * radius
-                                )
+                            local centerX = wheel.AbsoluteSize.X / 2
+                            local centerY = wheel.AbsoluteSize.Y / 2
+                            local angle = (hue * math.pi * 2) - math.pi
+                            local radius = saturation * math.min(wheel.AbsoluteSize.X, wheel.AbsoluteSize.Y) / 2
+                            wheelPicker.Position = UDim2.fromOffset(
+                                centerX + math.cos(angle) * radius,
+                                centerY + math.sin(angle) * radius
+                            )
                         end
 
                         local function updateDarknessSlider()
-                            darknessSlider.Position =
-                                UDim2.new(
-                                    0.5,
-                                    0,
-                                    1 - value,
-                                    0
-                                )
+                            darknessSlider.Position = UDim2.new(0.5, 0, 1 - value, 0)
                         end
 
                         local function updateGradient()
-                            darknessGradient.Color =
-                                ColorSequence.new({
-                                    ColorSequenceKeypoint.new(
-                                        0,
-                                        Color3.fromHSV(
-                                            hue,
-                                            saturation,
-                                            1
-                                        )
-                                    ),
-
-                                    ColorSequenceKeypoint.new(
-                                        1,
-                                        Color3.new(0, 0, 0)
-                                    )
-                                })
+                            darknessGradient.Color = ColorSequence.new({
+                                ColorSequenceKeypoint.new(0, Color3.fromHSV(hue, saturation, 1)),
+                                ColorSequenceKeypoint.new(1, Color3.new(0, 0, 0))
+                            })
                         end
 
                         local function applyColor()
-                            current =
-                                Color3.fromHSV(
-                                    hue,
-                                    saturation,
-                                    value
-                                )
-
-                            preview.BackgroundColor3 =
-                                current
-
-                            colorDisplay.BackgroundColor3 =
-                                current
-
+                            current = Color3.fromHSV(hue, saturation, value)
+                            preview.BackgroundColor3 = current
+                            colorDisplay.BackgroundColor3 = current
                             updateWheelPicker()
                             updateDarknessSlider()
                             updateGradient()
-
-                            setSetting(
-                                categoryName,
-                                itemName,
-                                settingKey,
-                                current
-                            )
-
-                            safeCall(
-                                setting.onChanged
-                                or setting.action,
-                                current
-                            )
+                            setSetting(categoryName, itemName, settingKey, current)
+                            safeCall(setting.onChanged or setting.action, current)
                         end
 
                         local wheelDragging = false
                         local darknessDragging = false
 
                         local function updateWheelFromMouse()
-                            local mouse =
-                                UserInputService:GetMouseLocation()
-
-                            local center =
-                                wheel.AbsolutePosition
-                                + (
-                                    wheel.AbsoluteSize
-                                    / 2
-                                )
-
-                            local offset =
-                                mouse - center
-
-                            local radius =
-                                math.min(
-                                    wheel.AbsoluteSize.X,
-                                    wheel.AbsoluteSize.Y
-                                ) / 2
-
-                            local distance =
-                                offset.Magnitude
+                            local mouse = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                            local center = wheel.AbsolutePosition + (wheel.AbsoluteSize / 2)
+                            local offset = mouse - center
+                            local radius = math.min(wheel.AbsoluteSize.X, wheel.AbsoluteSize.Y) / 2
+                            local distance = offset.Magnitude
 
                             if distance > radius then
-                                offset =
-                                    offset.Unit * radius
-
+                                offset = offset.Unit * radius
                                 distance = radius
                             end
 
                             if distance <= 0 then
                                 saturation = 0
                             else
-                                saturation =
-                                    math.clamp(
-                                        distance / radius,
-                                        0,
-                                        1
-                                    )
+                                saturation = math.clamp(distance / radius, 0, 1)
                             end
 
-                            local angle =
-                                math.atan2(
-                                    offset.Y,
-                                    offset.X
-                                )
+                            local angle = math.atan2(offset.Y, offset.X)
+                            hue = (angle + math.pi) / (math.pi * 2)
+                            hue = hue % 1
 
-                            hue =
-                                (
-                                    angle
-                                    + math.pi
-                                )
-                                / (math.pi * 2)
-
-                            hue =
-                                hue % 1
-
-                            wheelPicker.Position =
-                                UDim2.fromOffset(
-                                    wheel.AbsoluteSize.X / 2
-                                        + offset.X,
-
-                                    wheel.AbsoluteSize.Y / 2
-                                        + offset.Y
-                                )
+                            wheelPicker.Position = UDim2.fromOffset(
+                                wheel.AbsoluteSize.X / 2 + offset.X,
+                                wheel.AbsoluteSize.Y / 2 + offset.Y
+                            )
 
                             updateGradient()
                             applyColor()
                         end
 
                         local function updateDarknessFromMouse()
-                            local mouseY =
-                                UserInputService:GetMouseLocation().Y
-
-                            local top =
-                                darkness.AbsolutePosition.Y
-
-                            local height =
-                                darkness.AbsoluteSize.Y
-
-                            local position =
-                                math.clamp(
-                                    mouseY - top,
-                                    0,
-                                    height
-                                )
-
-                            value =
-                                1
-                                - math.clamp(
-                                    position / height,
-                                    0,
-                                    1
-                                )
-
-                            darknessSlider.Position =
-                                UDim2.new(
-                                    0.5,
-                                    0,
-                                    0,
-                                    position
-                                )
-
+                            local mouseY = UserInputService:GetMouseLocation().Y + GuiService:GetGuiInset().Y -- FIXED
+                            local top = darkness.AbsolutePosition.Y
+                            local height = darkness.AbsoluteSize.Y
+                            local position = math.clamp(mouseY - top, 0, height)
+                            value = 1 - math.clamp(position / height, 0, 1)
+                            darknessSlider.Position = UDim2.new(0.5, 0, 0, position)
                             applyColor()
                         end
 
@@ -2379,104 +1379,55 @@ local function init()
                         end)
 
                         darkness.InputBegan:Connect(function(input)
-                            if input.UserInputType
-                                ~= Enum.UserInputType.MouseButton1 then
-
-                                return
-                            end
-
+                            if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
                             darknessDragging = true
                             updateDarknessFromMouse()
                         end)
 
                         darknessSlider.InputBegan:Connect(function(input)
-                            if input.UserInputType
-                                ~= Enum.UserInputType.MouseButton1 then
-
-                                return
-                            end
-
+                            if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
                             darknessDragging = true
                             updateDarknessFromMouse()
                         end)
 
                         local colorPickerConnection
-
-                        colorPickerConnection =
-                            UserInputService.InputChanged:Connect(
-                                function(input)
-                                    if input.UserInputType
-                                        ~= Enum.UserInputType.MouseMovement then
-
-                                        return
-                                    end
-
-                                    if not frame.Parent then
-                                        if colorPickerConnection then
-                                            colorPickerConnection:Disconnect()
-                                        end
-
-                                        return
-                                    end
-
-                                    if wheelDragging then
-                                        updateWheelFromMouse()
-                                    elseif darknessDragging then
-                                        updateDarknessFromMouse()
-                                    end
-                                end
-                            )
-
-                        UserInputService.InputEnded:Connect(function(input)
-                            if input.UserInputType
-                                ~= Enum.UserInputType.MouseButton1 then
-
+                        colorPickerConnection = UserInputService.InputChanged:Connect(function(input)
+                            if input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+                            if not frame.Parent then
+                                if colorPickerConnection then colorPickerConnection:Disconnect() end
                                 return
                             end
+                            if wheelDragging then
+                                updateWheelFromMouse()
+                            elseif darknessDragging then
+                                updateDarknessFromMouse()
+                            end
+                        end)
 
+                        UserInputService.InputEnded:Connect(function(input)
+                            if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
                             wheelDragging = false
                             darknessDragging = false
                         end)
 
                         local function closePicker()
                             pickerFrame.Visible = false
-                            frame.Size =
-                                UDim2.new(
-                                    1,
-                                    0,
-                                    0,
-                                    38
-                                )
+                            frame.Size = UDim2.new(1, 0, 0, 38)
                         end
 
                         local function openPicker()
                             pickerFrame.Visible = true
-
-                            frame.Size =
-                                UDim2.new(
-                                    1,
-                                    0,
-                                    0,
-                                    232
-                                )
-
+                            frame.Size = UDim2.new(1, 0, 0, 232)
                             updateWheelPicker()
                             updateDarknessSlider()
                             updateGradient()
                         end
 
                         preview.MouseEnter:Connect(function()
-                            previewStroke.Color =
-                                Colors.Accent
+                            previewStroke.Color = Colors.Accent
                         end)
-
                         preview.MouseLeave:Connect(function()
-                            previewStroke.Color =
-                                Color3.fromRGB(
-                                    35,
-                                    40,
-                                    46
-                                )
+                            previewStroke.Color = Color3.fromRGB(35, 40, 46)
                         end)
 
                         preview.MouseButton1Click:Connect(function()
@@ -2493,420 +1444,225 @@ local function init()
 
                     -- Dropdown
                     elseif settingType == "dropdown" then
-                        local options =
-                            type(setting.options) == "table"
-                            and setting.options
-                            or {}
-
+                        local options = type(setting.options) == "table" and setting.options or {}
                         local default = setting.default
+                        if default == nil then default = options[1] or "None" end
+                        local current = getSetting(categoryName, itemName, settingKey, default)
 
-                        if default == nil then
-                            default =
-                                options[1]
-                                or "None"
-                        end
-
-                        local current =
-                            getSetting(
-                                categoryName,
-                                itemName,
-                                settingKey,
-                                default
-                            )
-
-                        local frame =
-                            Instance.new("Frame")
-
+                        local frame = Instance.new("Frame")
                         frame.BackgroundTransparency = 1
                         frame.BorderSizePixel = 0
-                        frame.Size =
-                            UDim2.new(1, 0, 0, 38)
+                        frame.Size = UDim2.new(1, 0, 0, 38)
                         frame.LayoutOrder = order
                         frame.Parent = settingsFrame
 
-                        local label =
-                            Instance.new("TextLabel")
-
+                        local label = Instance.new("TextLabel")
                         label.BackgroundTransparency = 1
-                        label.Size =
-                            UDim2.new(0.5, 0, 1, 0)
+                        label.Size = UDim2.new(0.5, 0, 1, 0)
                         label.FontFace = UIFont
                         label.TextSize = 16
-                        label.TextColor3 =
-                            Colors.Text
-                        label.TextXAlignment =
-                            Enum.TextXAlignment.Left
+                        label.TextColor3 = Colors.Text
+                        label.TextXAlignment = Enum.TextXAlignment.Left
                         label.Text = settingName
                         label.Parent = frame
 
-                        local dropdown =
-                            Instance.new("TextButton")
-
+                        local dropdown = Instance.new("TextButton")
                         dropdown.AutoButtonColor = false
-                        dropdown.BackgroundColor3 =
-                            Colors.Action
+                        dropdown.BackgroundColor3 = Colors.Action
                         dropdown.BorderSizePixel = 0
-                        dropdown.AnchorPoint =
-                            Vector2.new(1, 0)
-                        dropdown.Position =
-                            UDim2.new(1, 0, 0, 0)
-                        dropdown.Size =
-                            UDim2.fromOffset(120, 38)
+                        dropdown.AnchorPoint = Vector2.new(1, 0)
+                        dropdown.Position = UDim2.new(1, 0, 0, 0)
+                        dropdown.Size = UDim2.fromOffset(120, 38)
                         dropdown.FontFace = UIFont
                         dropdown.TextSize = 15
-                        dropdown.TextColor3 =
-                            Colors.Text
-                        dropdown.TextTruncate =
-                            Enum.TextTruncate.AtEnd
-                        dropdown.Text =
-                            tostring(current)
+                        dropdown.TextColor3 = Colors.Text
+                        dropdown.TextTruncate = Enum.TextTruncate.AtEnd
+                        dropdown.Text = tostring(current)
                         dropdown.ZIndex = 20050
                         dropdown.Parent = frame
 
-                        local dropdownContainer =
-                            Instance.new("Frame")
-
-                        dropdownContainer.Name =
-                            "DropdownOptions"
-
-                        dropdownContainer.BackgroundColor3 =
-                            Colors.Setting
-
+                        local dropdownContainer = Instance.new("Frame")
+                        dropdownContainer.Name = "DropdownOptions"
+                        dropdownContainer.BackgroundColor3 = Colors.Setting
                         dropdownContainer.BackgroundTransparency = 0
                         dropdownContainer.BorderSizePixel = 0
-                        dropdownContainer.Size =
-                            UDim2.new(1, 0, 0, 0)
-                        dropdownContainer.AutomaticSize =
-                            Enum.AutomaticSize.Y
-                        dropdownContainer.LayoutOrder =
-                            order + 100
+                        dropdownContainer.Size = UDim2.new(1, 0, 0, 0)
+                        dropdownContainer.AutomaticSize = Enum.AutomaticSize.Y
+                        dropdownContainer.LayoutOrder = order + 100
                         dropdownContainer.Visible = false
                         dropdownContainer.ZIndex = 20051
-                        dropdownContainer.Parent =
-                            settingsFrame
+                        dropdownContainer.Parent = settingsFrame
 
-                        local optionsLayout =
-                            Instance.new("UIListLayout")
-
-                        optionsLayout.SortOrder =
-                            Enum.SortOrder.LayoutOrder
-
-                        optionsLayout.Padding =
-                            UDim.new(0, 2)
-
-                        optionsLayout.Parent =
-                            dropdownContainer
+                        local optionsLayout = Instance.new("UIListLayout")
+                        optionsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                        optionsLayout.Padding = UDim.new(0, 2)
+                        optionsLayout.Parent = dropdownContainer
 
                         local function closeDropdown()
-                            dropdownContainer.Visible =
-                                false
-
-                            dropdown.BackgroundColor3 =
-                                Colors.Action
+                            dropdownContainer.Visible = false
+                            dropdown.BackgroundColor3 = Colors.Action
                         end
 
                         for optionIndex, option in ipairs(options) do
-                            local optionButton =
-                                Instance.new("TextButton")
-
+                            local optionButton = Instance.new("TextButton")
                             optionButton.AutoButtonColor = false
-                            optionButton.BackgroundColor3 =
-                                Colors.Action
+                            optionButton.BackgroundColor3 = Colors.Action
                             optionButton.BorderSizePixel = 0
-                            optionButton.Size =
-                                UDim2.new(1, 0, 0, 34)
+                            optionButton.Size = UDim2.new(1, 0, 0, 34)
                             optionButton.FontFace = UIFont
                             optionButton.TextSize = 15
-                            optionButton.TextColor3 =
-                                Colors.Text
-                            optionButton.Text =
-                                tostring(option)
-                            optionButton.LayoutOrder =
-                                optionIndex
+                            optionButton.TextColor3 = Colors.Text
+                            optionButton.Text = tostring(option)
+                            optionButton.LayoutOrder = optionIndex
                             optionButton.ZIndex = 20052
-                            optionButton.Parent =
-                                dropdownContainer
+                            optionButton.Parent = dropdownContainer
 
                             optionButton.MouseEnter:Connect(function()
-                                optionButton.BackgroundColor3 =
-                                    Colors.ActionHover
+                                optionButton.BackgroundColor3 = Colors.ActionHover
                             end)
-
                             optionButton.MouseLeave:Connect(function()
-                                optionButton.BackgroundColor3 =
-                                    Colors.Action
+                                optionButton.BackgroundColor3 = Colors.Action
                             end)
 
                             optionButton.MouseButton1Click:Connect(function()
                                 current = option
-
-                                dropdown.Text =
-                                    tostring(current)
-
-                                setSetting(
-                                    categoryName,
-                                    itemName,
-                                    settingKey,
-                                    current
-                                )
-
-                                safeCall(
-                                    setting.onChanged
-                                    or setting.action,
-                                    current
-                                )
-
+                                dropdown.Text = tostring(current)
+                                setSetting(categoryName, itemName, settingKey, current)
+                                safeCall(setting.onChanged or setting.action, current)
                                 closeDropdown()
                             end)
                         end
 
                         dropdown.MouseEnter:Connect(function()
-                            dropdown.BackgroundColor3 =
-                                Colors.ActionHover
+                            dropdown.BackgroundColor3 = Colors.ActionHover
                         end)
-
                         dropdown.MouseLeave:Connect(function()
                             if not dropdownContainer.Visible then
-                                dropdown.BackgroundColor3 =
-                                    Colors.Action
+                                dropdown.BackgroundColor3 = Colors.Action
                             end
                         end)
 
                         dropdown.MouseButton1Click:Connect(function()
-                            dropdownContainer.Visible =
-                                not dropdownContainer.Visible
-
-                            dropdown.BackgroundColor3 =
-                                dropdownContainer.Visible
-                                and Colors.ActionHover
-                                or Colors.Action
+                            dropdownContainer.Visible = not dropdownContainer.Visible
+                            dropdown.BackgroundColor3 = dropdownContainer.Visible and Colors.ActionHover or Colors.Action
                         end)
 
                     -- Checkbox
                     elseif settingType == "checkbox" then
-                        local default =
-                            setting.default == true
+                        local default = setting.default == true
+                        local current = getSetting(categoryName, itemName, settingKey, default) == true
 
-                        local current =
-                            getSetting(
-                                categoryName,
-                                itemName,
-                                settingKey,
-                                default
-                            ) == true
-
-                        local frame =
-                            Instance.new("Frame")
-
+                        local frame = Instance.new("Frame")
                         frame.BackgroundTransparency = 1
                         frame.BorderSizePixel = 0
-                        frame.Size =
-                            UDim2.new(1, 0, 0, 38)
+                        frame.Size = UDim2.new(1, 0, 0, 38)
                         frame.LayoutOrder = order
                         frame.Parent = settingsFrame
 
-                        local check =
-                            Instance.new("TextButton")
-
+                        local check = Instance.new("TextButton")
                         check.Name = "Check"
                         check.AutoButtonColor = false
-                        check.BackgroundColor3 =
-                            current
-                            and Colors.ToggleOn
-                            or Colors.ToggleOff
-
+                        check.BackgroundColor3 = current and Colors.ToggleOn or Colors.ToggleOff
                         check.BorderSizePixel = 0
-                        check.Position =
-                            UDim2.fromOffset(6, 4)
-                        check.Size =
-                            UDim2.fromOffset(30, 30)
+                        check.Position = UDim2.fromOffset(6, 4)
+                        check.Size = UDim2.fromOffset(30, 30)
                         check.Text = ""
                         check.Parent = frame
 
-                        local label =
-                            Instance.new("TextLabel")
-
+                        local label = Instance.new("TextLabel")
                         label.BackgroundTransparency = 1
-                        label.Position =
-                            UDim2.fromOffset(48, 0)
-                        label.Size =
-                            UDim2.new(1, -48, 1, 0)
+                        label.Position = UDim2.fromOffset(48, 0)
+                        label.Size = UDim2.new(1, -48, 1, 0)
                         label.FontFace = UIFont
                         label.TextSize = 16
-                        label.TextColor3 =
-                            Colors.Text
-                        label.TextXAlignment =
-                            Enum.TextXAlignment.Left
-                        label.TextTruncate =
-                            Enum.TextTruncate.AtEnd
+                        label.TextColor3 = Colors.Text
+                        label.TextXAlignment = Enum.TextXAlignment.Left
+                        label.TextTruncate = Enum.TextTruncate.AtEnd
                         label.Text = settingName
                         label.Parent = frame
 
                         local function updateCheckbox()
-                            check.BackgroundColor3 =
-                                current
-                                and Colors.ToggleOn
-                                or Colors.ToggleOff
+                            check.BackgroundColor3 = current and Colors.ToggleOn or Colors.ToggleOff
                         end
 
                         check.MouseEnter:Connect(function()
-                            check.BackgroundColor3 =
-                                current
-                                and Colors.ToggleOnHover
-                                or Colors.ToggleOffHover
+                            check.BackgroundColor3 = current and Colors.ToggleOnHover or Colors.ToggleOffHover
                         end)
-
                         check.MouseLeave:Connect(function()
                             updateCheckbox()
                         end)
 
                         check.MouseButton1Click:Connect(function()
                             current = not current
-
                             updateCheckbox()
-
-                            setSetting(
-                                categoryName,
-                                itemName,
-                                settingKey,
-                                current
-                            )
-
-                            safeCall(
-                                setting.onChanged
-                                or setting.action,
-                                current
-                            )
+                            setSetting(categoryName, itemName, settingKey, current)
+                            safeCall(setting.onChanged or setting.action, current)
                         end)
 
                     -- Textbox
                     elseif settingType == "textbox" then
-                        local frame =
-                            Instance.new("Frame")
-
+                        local frame = Instance.new("Frame")
                         frame.BackgroundTransparency = 1
-                        frame.Size =
-                            UDim2.new(1, 0, 0, 34)
+                        frame.Size = UDim2.new(1, 0, 0, 34)
                         frame.LayoutOrder = order
                         frame.Parent = settingsFrame
 
-                        local label =
-                            Instance.new("TextLabel")
-
+                        local label = Instance.new("TextLabel")
                         label.BackgroundTransparency = 1
-                        label.Size =
-                            UDim2.new(0.4, 0, 1, 0)
+                        label.Size = UDim2.new(0.4, 0, 1, 0)
                         label.FontFace = UIFont
                         label.TextSize = 14
-                        label.TextColor3 =
-                            Colors.Text
-                        label.TextXAlignment =
-                            Enum.TextXAlignment.Left
+                        label.TextColor3 = Colors.Text
+                        label.TextXAlignment = Enum.TextXAlignment.Left
                         label.Text = settingName
                         label.Parent = frame
 
-                        local textbox =
-                            Instance.new("TextBox")
-
-                        textbox.BackgroundColor3 =
-                            Colors.ToggleOff
+                        local textbox = Instance.new("TextBox")
+                        textbox.BackgroundColor3 = Colors.ToggleOff
                         textbox.BorderSizePixel = 0
-                        textbox.AnchorPoint =
-                            Vector2.new(1, 0.5)
-                        textbox.Position =
-                            UDim2.new(1, 0, 0.5, 0)
-                        textbox.Size =
-                            UDim2.fromOffset(140, 28)
+                        textbox.AnchorPoint = Vector2.new(1, 0.5)
+                        textbox.Position = UDim2.new(1, 0, 0.5, 0)
+                        textbox.Size = UDim2.fromOffset(140, 28)
                         textbox.FontFace = UIFont
                         textbox.TextSize = 14
-                        textbox.TextColor3 =
-                            Colors.Text
-                        textbox.Text =
-                            tostring(
-                                getSetting(
-                                    categoryName,
-                                    itemName,
-                                    settingKey,
-                                    setting.default or ""
-                                )
-                            )
+                        textbox.TextColor3 = Colors.Text
+                        textbox.Text = tostring(getSetting(categoryName, itemName, settingKey, setting.default or ""))
                         textbox.ClearTextOnFocus = false
                         textbox.Parent = frame
 
                         textbox.FocusLost:Connect(function()
-                            setSetting(
-                                categoryName,
-                                itemName,
-                                settingKey,
-                                textbox.Text
-                            )
-
-                            safeCall(
-                                setting.onChanged
-                                or setting.action,
-                                textbox.Text
-                            )
+                            setSetting(categoryName, itemName, settingKey, textbox.Text)
+                            safeCall(setting.onChanged or setting.action, textbox.Text)
                         end)
                     end
                 end
             end
 
-            buttonData[categoryName] =
-                buttonData[categoryName]
-                or {}
-
+            buttonData[categoryName] = buttonData[categoryName] or {}
             buttonData[categoryName][itemName] = {
                 button = button,
                 wrapper = wrapper,
                 settings = settingsFrame,
-
                 isToggle = isToggle,
-
                 keybindButton = keybindButton,
-
                 action = action,
-
-                getState = function()
-                    return currentState
-                end,
-
+                getState = function() return currentState end,
                 toggle = performToggle,
-
-                setState = function(
-                    state,
-                    skipSave
-                )
-                    currentState =
-                        state and true or false
-
-                    config.features[categoryName][itemName] =
-                        currentState
-
+                setState = function(state, skipSave)
+                    currentState = state and true or false
+                    config.features[categoryName][itemName] = currentState
                     refreshColor()
-
-                    if not skipSave then
-                        saveConfig()
-                    end
+                    if not skipSave then saveConfig() end
                 end
             }
 
             if isToggle and currentState then
-                local ok, result =
-                    pcall(action, true)
-
+                local ok, result = pcall(action, true)
                 if not ok or result == false then
                     currentState = false
-
-                    config.features[categoryName][itemName] =
-                        false
-
+                    config.features[categoryName][itemName] = false
                     refreshColor()
-
-                    notifyWarning(
-                        itemName
-                        .. " disabled (condition not met)"
-                    )
-
+                    notifyWarning(itemName .. " disabled (condition not met)")
                     saveConfig()
                 end
             end
@@ -2914,13 +1670,8 @@ local function init()
     end
 
     -- Tab panel
-    local noxX =
-        tonumber(config.noxPosition.x)
-        or 18
-
-    local noxY =
-        tonumber(config.noxPosition.y)
-        or 75
+    local noxX = tonumber(config.noxPosition.x) or 18
+    local noxY = tonumber(config.noxPosition.y) or 75
 
     tabPanel = Instance.new("Frame")
     tabPanel.Name = "noxvape"
@@ -2928,402 +1679,217 @@ local function init()
     tabPanel.BackgroundTransparency = 0
     tabPanel.BorderSizePixel = 0
     tabPanel.Size = UDim2.fromOffset(210, 560)
-    tabPanel.Position =
-        UDim2.fromOffset(noxX, noxY)
+    tabPanel.Position = UDim2.fromOffset(noxX, noxY)
     tabPanel.ClipsDescendants = true
     tabPanel.ZIndex = 20000
     tabPanel.Parent = screenGui
 
-    local tabHeader =
-        Instance.new("TextButton")
-
+    local tabHeader = Instance.new("TextButton")
     tabHeader.Name = "Header"
     tabHeader.AutoButtonColor = false
-    tabHeader.BackgroundColor3 =
-        Colors.Panel
+    tabHeader.BackgroundColor3 = Colors.Panel
     tabHeader.BackgroundTransparency = 0
     tabHeader.BorderSizePixel = 0
-    tabHeader.Size =
-        UDim2.new(1, 0, 0, 46)
+    tabHeader.Size = UDim2.new(1, 0, 0, 46)
     tabHeader.Text = ""
     tabHeader.ZIndex = 20001
     tabHeader.Parent = tabPanel
 
-    local logo =
-        Instance.new("ImageLabel")
-
+    local logo = Instance.new("ImageLabel")
     logo.Name = "Logo"
     logo.BackgroundTransparency = 1
-    logo.AnchorPoint =
-        Vector2.new(0.5, 0.5)
-    logo.Position =
-        UDim2.fromScale(0.5, 0.5)
-    logo.Size =
-        UDim2.fromScale(1.4, 1.4)
-    logo.ScaleType =
-        Enum.ScaleType.Fit
+    logo.AnchorPoint = Vector2.new(0.5, 0.5)
+    logo.Position = UDim2.fromScale(0.5, 0.5)
+    logo.Size = UDim2.fromScale(1.4, 1.4)
+    logo.ScaleType = Enum.ScaleType.Fit
     logo.ZIndex = 20002
     logo.Parent = tabHeader
 
     task.spawn(function()
-        if type(request) == "function"
-            and type(writefile) == "function" then
-
+        if type(request) == "function" and type(writefile) == "function" then
             local needDownload = true
-
             if type(isfile) == "function" then
-                needDownload =
-                    not isfile(LOGO_FILE)
+                needDownload = not isfile(LOGO_FILE)
             end
-
             if needDownload then
                 pcall(function()
-                    local response =
-                        request({
-                            Url = LOGO_URL,
-                            Method = "GET"
-                        })
-
-                    if response
-                        and response.Success
-                        and response.Body then
-
-                        writefile(
-                            LOGO_FILE,
-                            response.Body
-                        )
+                    local response = request({ Url = LOGO_URL, Method = "GET" })
+                    if response and response.Success and response.Body then
+                        writefile(LOGO_FILE, response.Body)
                     end
                 end)
             end
         end
-
         task.wait(0.12)
-
-        if type(isfile) == "function"
-            and isfile(LOGO_FILE) then
-
-            local ok, asset =
-                pcall(function()
-                    return getCustomAsset(
-                        LOGO_FILE
-                    )
-                end)
-
-            if ok and asset then
-                logo.Image = asset
-            end
+        if type(isfile) == "function" and isfile(LOGO_FILE) then
+            local ok, asset = pcall(function() return getCustomAsset(LOGO_FILE) end)
+            if ok and asset then logo.Image = asset end
         end
     end)
 
-    makeDraggable(
-        tabPanel,
-        tabHeader,
-        "noxvape",
-        true
-    )
+    makeDraggable(tabPanel, tabHeader, "noxvape", true)
 
-    local tabScroll =
-        Instance.new("Frame")
-
+    local tabScroll = Instance.new("Frame")
     tabScroll.Name = "Tabs"
     tabScroll.BackgroundTransparency = 1
-    tabScroll.Position =
-        UDim2.fromOffset(8, 54)
-    tabScroll.Size =
-        UDim2.new(1, -16, 0, 450)
+    tabScroll.Position = UDim2.fromOffset(8, 54)
+    tabScroll.Size = UDim2.new(1, -16, 0, 450)
     tabScroll.ZIndex = 20004
     tabScroll.Parent = tabPanel
 
-    local tabLayout =
-        Instance.new("UIListLayout")
-
-    tabLayout.SortOrder =
-        Enum.SortOrder.LayoutOrder
-
-    tabLayout.Padding =
-        UDim.new(0, 3)
-
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tabLayout.Padding = UDim.new(0, 3)
     tabLayout.Parent = tabScroll
 
     for index, categoryDefinition in ipairs(_categories) do
-        local categoryName =
-            categoryDefinition.name
-
-        local tabButton =
-            Instance.new("TextButton")
-
+        local categoryName = categoryDefinition.name
+        local tabButton = Instance.new("TextButton")
         tabButton.Name = categoryName
         tabButton.LayoutOrder = index
         tabButton.AutoButtonColor = false
-        tabButton.BackgroundColor3 =
-            Colors.Action
+        tabButton.BackgroundColor3 = Colors.Action
         tabButton.BackgroundTransparency = 0
         tabButton.BorderSizePixel = 0
-        tabButton.Size =
-            UDim2.new(1, 0, 0, 36)
+        tabButton.Size = UDim2.new(1, 0, 0, 36)
         tabButton.FontFace = UIFont
         tabButton.TextSize = 17
         tabButton.TextColor3 = Colors.Text
-        tabButton.Text =
-            categoryName
-        tabButton.TextXAlignment =
-            Enum.TextXAlignment.Center
+        tabButton.Text = categoryName
+        tabButton.TextXAlignment = Enum.TextXAlignment.Center
         tabButton.ZIndex = 20005
         tabButton.Parent = tabScroll
 
         tabButton.MouseEnter:Connect(function()
-            tw(
-                tabButton,
-                {
-                    BackgroundColor3 =
-                        Colors.ActionHover
-                },
-                0.08
-            )
+            tw(tabButton, { BackgroundColor3 = Colors.ActionHover }, 0.08)
         end)
-
         tabButton.MouseLeave:Connect(function()
-            tw(
-                tabButton,
-                {
-                    BackgroundColor3 =
-                        Colors.Action
-                },
-                0.08
-            )
+            tw(tabButton, { BackgroundColor3 = Colors.Action }, 0.08)
         end)
 
         tabButton.MouseButton1Click:Connect(function()
             playButtonSound()
-
-            local card =
-                categoryFrames[categoryName]
-
-            if not card or not card.Parent then
-                return
-            end
-
-            categoryStates[categoryName] =
-                not categoryStates[categoryName]
-
-            card.Visible =
-                categoryStates[categoryName]
-
-            config.tabs[categoryName] =
-                categoryStates[categoryName]
-
+            local card = categoryFrames[categoryName]
+            if not card or not card.Parent then return end
+            categoryStates[categoryName] = not categoryStates[categoryName]
+            card.Visible = categoryStates[categoryName]
+            config.tabs[categoryName] = categoryStates[categoryName]
             saveConfig()
         end)
 
-        addTooltip(
-            tabButton,
-            "Toggle " .. categoryName .. " tab"
-        )
+        addTooltip(tabButton, "Toggle " .. categoryName .. " tab")
     end
 
     -- Settings button
-    local settingsContainer =
-        Instance.new("Frame")
-
-    settingsContainer.Name =
-        "SettingsButtonContainer"
-
+    local settingsContainer = Instance.new("Frame")
+    settingsContainer.Name = "SettingsButtonContainer"
     settingsContainer.BackgroundTransparency = 1
     settingsContainer.BorderSizePixel = 0
-    settingsContainer.Position =
-        UDim2.new(1, -48, 1, -48)
-    settingsContainer.Size =
-        UDim2.fromOffset(40, 40)
+    settingsContainer.Position = UDim2.new(1, -48, 1, -48)
+    settingsContainer.Size = UDim2.fromOffset(40, 40)
     settingsContainer.ZIndex = 20015
     settingsContainer.Parent = tabPanel
 
-    local settingsButton =
-        Instance.new("TextButton")
-
+    local settingsButton = Instance.new("TextButton")
     settingsButton.Name = "SettingsButton"
     settingsButton.AutoButtonColor = false
     settingsButton.BackgroundTransparency = 1
     settingsButton.BorderSizePixel = 0
-    settingsButton.Size =
-        UDim2.fromScale(1, 1)
+    settingsButton.Size = UDim2.fromScale(1, 1)
     settingsButton.Text = ""
     settingsButton.ZIndex = 20016
-    settingsButton.Parent =
-        settingsContainer
+    settingsButton.Parent = settingsContainer
 
-    local settingsIcon =
-        Instance.new("ImageLabel")
-
+    local settingsIcon = Instance.new("ImageLabel")
     settingsIcon.Name = "SettingsIcon"
     settingsIcon.BackgroundTransparency = 1
-    settingsIcon.AnchorPoint =
-        Vector2.new(0.5, 0.5)
-    settingsIcon.Position =
-        UDim2.fromScale(0.5, 0.5)
-    settingsIcon.Size =
-        UDim2.fromScale(1, 1)
-    settingsIcon.ScaleType =
-        Enum.ScaleType.Fit
-    settingsIcon.ImageColor3 =
-        Color3.fromRGB(255, 255, 255)
+    settingsIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+    settingsIcon.Position = UDim2.fromScale(0.5, 0.5)
+    settingsIcon.Size = UDim2.fromScale(1, 1)
+    settingsIcon.ScaleType = Enum.ScaleType.Fit
+    settingsIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
     settingsIcon.ZIndex = 20017
-    settingsIcon.Parent =
-        settingsButton
+    settingsIcon.Parent = settingsButton
 
     task.spawn(function()
-        if type(request) == "function"
-            and type(writefile) == "function" then
-
+        if type(request) == "function" and type(writefile) == "function" then
             pcall(function()
-                local response =
-                    request({
-                        Url = SETTINGS_ICON_URL,
-                        Method = "GET"
-                    })
-
-                if response
-                    and response.Success
-                    and response.Body then
-
-                    writefile(
-                        "nox_settings_icon.png",
-                        response.Body
-                    )
-
-                    local asset =
-                        getCustomAsset(
-                            "nox_settings_icon.png"
-                        )
-
-                    if asset then
-                        settingsIcon.Image = asset
-                    end
+                local response = request({ Url = SETTINGS_ICON_URL, Method = "GET" })
+                if response and response.Success and response.Body then
+                    writefile("nox_settings_icon.png", response.Body)
+                    local asset = getCustomAsset("nox_settings_icon.png")
+                    if asset then settingsIcon.Image = asset end
                 end
             end)
         end
     end)
 
     if settingsIcon.Image == "" then
-        settingsIcon.Image =
-            "rbxassetid://6034654127"
+        settingsIcon.Image = "rbxassetid://6034654127"
     end
 
     settingsButton.MouseEnter:Connect(function()
-        tw(
-            settingsIcon,
-            {
-                ImageColor3 =
-                    Color3.fromRGB(
-                        180,
-                        180,
-                        180
-                    )
-            },
-            0.1
-        )
+        tw(settingsIcon, { ImageColor3 = Color3.fromRGB(180, 180, 180) }, 0.1)
     end)
-
     settingsButton.MouseLeave:Connect(function()
-        tw(
-            settingsIcon,
-            {
-                ImageColor3 =
-                    Color3.fromRGB(
-                        255,
-                        255,
-                        255
-                    )
-            },
-            0.1
-        )
+        tw(settingsIcon, { ImageColor3 = Color3.fromRGB(255, 255, 255) }, 0.1)
     end)
 
-    addTooltip(
-        settingsButton,
-        "Open GUI settings"
-    )
+    addTooltip(settingsButton, "Open GUI settings")
 
     -- Settings window
     local function createSettingsWindow()
         if settingsWindow then
-            settingsWindow.Visible =
-                not settingsWindow.Visible
-
-            settingsVisible =
-                settingsWindow.Visible
-
+            settingsWindow.Visible = not settingsWindow.Visible
+            settingsVisible = settingsWindow.Visible
             return
         end
 
-        local winX, winY =
-            getPosition(
-                "settingsWindow",
-                50,
-                100
-            )
+        local winX, winY = getPosition("settingsWindow", 50, 100)
 
-        local window =
-            Instance.new("Frame")
-
+        local window = Instance.new("Frame")
         window.Name = "SettingsWindow"
-        window.BackgroundColor3 =
-            Colors.Panel
+        window.BackgroundColor3 = Colors.Panel
         window.BackgroundTransparency = 0
         window.BorderSizePixel = 0
-        window.Size =
-            UDim2.fromOffset(280, 480)
-        window.Position =
-            UDim2.fromOffset(winX, winY)
+        window.Size = UDim2.fromOffset(280, 480)
+        window.Position = UDim2.fromOffset(winX, winY)
         window.ClipsDescendants = true
         window.ZIndex = 40000
         window.Parent = screenGui
 
-        local header =
-            Instance.new("TextButton")
-
+        local header = Instance.new("TextButton")
         header.AutoButtonColor = false
-        header.BackgroundColor3 =
-            Colors.Panel
+        header.BackgroundColor3 = Colors.Panel
         header.BackgroundTransparency = 0
         header.BorderSizePixel = 0
-        header.Size =
-            UDim2.new(1, 0, 0, 40)
+        header.Size = UDim2.new(1, 0, 0, 40)
         header.FontFace = UIFont
         header.TextSize = 20
         header.TextColor3 = Colors.Text
-        header.TextXAlignment =
-            Enum.TextXAlignment.Left
+        header.TextXAlignment = Enum.TextXAlignment.Left
         header.Text = "  Settings"
         header.ZIndex = 40001
         header.Parent = window
 
-        local closeButton =
-            Instance.new("TextButton")
-
+        local closeButton = Instance.new("TextButton")
         closeButton.AutoButtonColor = false
         closeButton.BackgroundTransparency = 1
-        closeButton.Size =
-            UDim2.fromOffset(40, 40)
-        closeButton.AnchorPoint =
-            Vector2.new(1, 0)
-        closeButton.Position =
-            UDim2.new(1, 0, 0, 0)
+        closeButton.Size = UDim2.fromOffset(40, 40)
+        closeButton.AnchorPoint = Vector2.new(1, 0)
+        closeButton.Position = UDim2.new(1, 0, 0, 0)
         closeButton.FontFace = UIFont
         closeButton.TextSize = 20
-        closeButton.TextColor3 =
-            Colors.MutedText
+        closeButton.TextColor3 = Colors.MutedText
         closeButton.Text = "✕"
         closeButton.ZIndex = 40002
         closeButton.Parent = header
 
         closeButton.MouseEnter:Connect(function()
-            closeButton.TextColor3 =
-                Colors.Text
+            closeButton.TextColor3 = Colors.Text
         end)
-
         closeButton.MouseLeave:Connect(function()
-            closeButton.TextColor3 =
-                Colors.MutedText
+            closeButton.TextColor3 = Colors.MutedText
         end)
 
         closeButton.MouseButton1Click:Connect(function()
@@ -3331,407 +1897,202 @@ local function init()
             settingsVisible = false
         end)
 
-        makeDraggable(
-            window,
-            header,
-            "settingsWindow",
-            false
-        )
+        makeDraggable(window, header, "settingsWindow", false)
 
-        local content =
-            Instance.new("ScrollingFrame")
-
+        local content = Instance.new("ScrollingFrame")
         content.Name = "Content"
         content.BackgroundTransparency = 1
         content.BorderSizePixel = 0
-        content.Position =
-            UDim2.fromOffset(12, 48)
-        content.Size =
-            UDim2.new(1, -24, 1, -58)
+        content.Position = UDim2.fromOffset(12, 48)
+        content.Size = UDim2.new(1, -24, 1, -58)
         content.ScrollBarThickness = 4
-        content.ScrollBarImageColor3 =
-            Colors.Accent
-        content.ScrollingDirection =
-            Enum.ScrollingDirection.Y
-        content.AutomaticCanvasSize =
-            Enum.AutomaticSize.Y
-        content.CanvasSize =
-            UDim2.fromOffset(0, 0)
+        content.ScrollBarImageColor3 = Colors.Accent
+        content.ScrollingDirection = Enum.ScrollingDirection.Y
+        content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        content.CanvasSize = UDim2.fromOffset(0, 0)
         content.ZIndex = 40003
         content.Parent = window
 
-        local contentLayout =
-            Instance.new("UIListLayout")
-
-        contentLayout.SortOrder =
-            Enum.SortOrder.LayoutOrder
-
-        contentLayout.Padding =
-            UDim.new(0, 10)
-
+        local contentLayout = Instance.new("UIListLayout")
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        contentLayout.Padding = UDim.new(0, 10)
         contentLayout.Parent = content
 
         local function addLabel(text, order)
-            local label =
-                Instance.new("TextLabel")
-
+            local label = Instance.new("TextLabel")
             label.BackgroundTransparency = 1
-            label.Size =
-                UDim2.new(1, 0, 0, 22)
+            label.Size = UDim2.new(1, 0, 0, 22)
             label.FontFace = UIFont
             label.TextSize = 17
-            label.TextColor3 =
-                Colors.Text
-            label.TextXAlignment =
-                Enum.TextXAlignment.Left
+            label.TextColor3 = Colors.Text
+            label.TextXAlignment = Enum.TextXAlignment.Left
             label.Text = text
             label.LayoutOrder = order
             label.Parent = content
         end
 
-        local function addCheck(
-            labelText,
-            getter,
-            setter,
-            order,
-            tip
-        )
-            local frame =
-                Instance.new("Frame")
-
+        local function addCheck(labelText, getter, setter, order, tip)
+            local frame = Instance.new("Frame")
             frame.BackgroundTransparency = 1
-            frame.Size =
-                UDim2.new(1, 0, 0, 34)
+            frame.Size = UDim2.new(1, 0, 0, 34)
             frame.LayoutOrder = order
             frame.Parent = content
 
-            local check =
-                Instance.new("TextButton")
-
+            local check = Instance.new("TextButton")
             check.AutoButtonColor = false
-            check.BackgroundColor3 =
-                getter()
-                and Colors.Accent
-                or Colors.Action
+            check.BackgroundColor3 = getter() and Colors.Accent or Colors.Action
             check.BackgroundTransparency = 0
             check.BorderSizePixel = 0
-            check.Position =
-                UDim2.fromOffset(0, 3)
-            check.Size =
-                UDim2.fromOffset(26, 26)
+            check.Position = UDim2.fromOffset(0, 3)
+            check.Size = UDim2.fromOffset(26, 26)
             check.Text = ""
             check.Parent = frame
 
-            local label =
-                Instance.new("TextLabel")
-
+            local label = Instance.new("TextLabel")
             label.BackgroundTransparency = 1
-            label.Position =
-                UDim2.fromOffset(34, 0)
-            label.Size =
-                UDim2.new(1, -34, 1, 0)
+            label.Position = UDim2.fromOffset(34, 0)
+            label.Size = UDim2.new(1, -34, 1, 0)
             label.FontFace = UIFont
             label.TextSize = 17
-            label.TextColor3 =
-                Colors.Text
-            label.TextXAlignment =
-                Enum.TextXAlignment.Left
+            label.TextColor3 = Colors.Text
+            label.TextXAlignment = Enum.TextXAlignment.Left
             label.Text = labelText
             label.Parent = frame
 
-            addTooltip(
-                label,
-                tip or "Toggle"
-            )
+            addTooltip(label, tip or "Toggle")
 
             local function update()
-                check.BackgroundColor3 =
-                    getter()
-                    and Colors.Accent
-                    or Colors.Action
+                check.BackgroundColor3 = getter() and Colors.Accent or Colors.Action
             end
 
             check.MouseEnter:Connect(function()
-                check.BackgroundColor3 =
-                    getter()
-                    and Colors.ToggleOnHover
-                    or Colors.ToggleOffHover
+                check.BackgroundColor3 = getter() and Colors.ToggleOnHover or Colors.ToggleOffHover
             end)
-
-            check.MouseLeave:Connect(function()
-                update()
-            end)
+            check.MouseLeave:Connect(function() update() end)
 
             check.MouseButton1Click:Connect(function()
                 playButtonSound()
-
                 setter(not getter())
-
                 update()
-
                 saveConfig()
             end)
 
-            addTooltip(
-                check,
-                tip or "Toggle"
-            )
+            addTooltip(check, tip or "Toggle")
         end
 
-        local function addTextRow(
-            labelText,
-            getter,
-            setter,
-            order,
-            placeholder
-        )
-            local frame =
-                Instance.new("Frame")
-
+        local function addTextRow(labelText, getter, setter, order, placeholder)
+            local frame = Instance.new("Frame")
             frame.BackgroundTransparency = 1
-            frame.Size =
-                UDim2.new(1, 0, 0, 34)
+            frame.Size = UDim2.new(1, 0, 0, 34)
             frame.LayoutOrder = order
             frame.Parent = content
 
-            local label =
-                Instance.new("TextLabel")
-
+            local label = Instance.new("TextLabel")
             label.BackgroundTransparency = 1
-            label.Size =
-                UDim2.new(0.4, 0, 1, 0)
+            label.Size = UDim2.new(0.4, 0, 1, 0)
             label.FontFace = UIFont
             label.TextSize = 15
-            label.TextColor3 =
-                Colors.Text
-            label.TextXAlignment =
-                Enum.TextXAlignment.Left
+            label.TextColor3 = Colors.Text
+            label.TextXAlignment = Enum.TextXAlignment.Left
             label.Text = labelText
             label.Parent = frame
 
-            local textbox =
-                Instance.new("TextBox")
-
-            textbox.BackgroundColor3 =
-                Colors.ToggleOff
+            local textbox = Instance.new("TextBox")
+            textbox.BackgroundColor3 = Colors.ToggleOff
             textbox.BorderSizePixel = 0
-            textbox.AnchorPoint =
-                Vector2.new(1, 0.5)
-            textbox.Position =
-                UDim2.new(1, 0, 0.5, 0)
-            textbox.Size =
-                UDim2.fromOffset(140, 28)
+            textbox.AnchorPoint = Vector2.new(1, 0.5)
+            textbox.Position = UDim2.new(1, 0, 0.5, 0)
+            textbox.Size = UDim2.fromOffset(140, 28)
             textbox.FontFace = UIFont
             textbox.TextSize = 15
-            textbox.TextColor3 =
-                Colors.Text
-            textbox.PlaceholderText =
-                placeholder or ""
+            textbox.TextColor3 = Colors.Text
+            textbox.PlaceholderText = placeholder or ""
             textbox.Text = getter()
             textbox.ClearTextOnFocus = false
             textbox.Parent = frame
 
             textbox.FocusLost:Connect(function()
-                local text =
-                    textbox.Text:gsub(
-                        "%s+",
-                        ""
-                    )
-
-                if text == "" then
-                    text =
-                        placeholder
-                        or "0"
-                end
-
+                local text = textbox.Text:gsub("%s+", "")
+                if text == "" then text = placeholder or "0" end
                 textbox.Text = text
-
                 setter(text)
-
                 saveConfig()
             end)
         end
 
         local function addVolumeSlider(order)
-            local frame =
-                Instance.new("Frame")
-
+            local frame = Instance.new("Frame")
             frame.BackgroundTransparency = 1
-            frame.Size =
-                UDim2.new(1, 0, 0, 50)
+            frame.Size = UDim2.new(1, 0, 0, 50)
             frame.LayoutOrder = order
             frame.Parent = content
 
-            local label =
-                Instance.new("TextLabel")
-
+            local label = Instance.new("TextLabel")
             label.BackgroundTransparency = 1
-            label.Size =
-                UDim2.new(1, 0, 0, 20)
+            label.Size = UDim2.new(1, 0, 0, 20)
             label.FontFace = UIFont
             label.TextSize = 15
-            label.TextColor3 =
-                Colors.Text
-            label.TextXAlignment =
-                Enum.TextXAlignment.Left
-
-            label.Text =
-                "Volume ("
-                .. math.floor(
-                    config.soundVolume * 100
-                )
-                .. "%)"
-
+            label.TextColor3 = Colors.Text
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            label.Text = "Volume (" .. math.floor(config.soundVolume * 100) .. "%)"
             label.Parent = frame
 
-            local sliderBackground =
-                Instance.new("Frame")
-
-            sliderBackground.BackgroundColor3 =
-                Colors.ToggleOff
+            local sliderBackground = Instance.new("Frame")
+            sliderBackground.BackgroundColor3 = Colors.ToggleOff
             sliderBackground.BorderSizePixel = 0
-            sliderBackground.Position =
-                UDim2.fromOffset(0, 26)
-            sliderBackground.Size =
-                UDim2.new(1, 0, 0, 14)
+            sliderBackground.Position = UDim2.fromOffset(0, 26)
+            sliderBackground.Size = UDim2.new(1, 0, 0, 14)
             sliderBackground.Parent = frame
 
-            local fill =
-                Instance.new("Frame")
-
-            fill.BackgroundColor3 =
-                Colors.Accent
+            local fill = Instance.new("Frame")
+            fill.BackgroundColor3 = Colors.Accent
             fill.BorderSizePixel = 0
-            fill.Size =
-                UDim2.new(
-                    config.soundVolume,
-                    0,
-                    1,
-                    0
-                )
-            fill.Parent =
-                sliderBackground
+            fill.Size = UDim2.new(config.soundVolume, 0, 1, 0)
+            fill.Parent = sliderBackground
 
-            local knob =
-                Instance.new("TextButton")
-
+            local knob = Instance.new("TextButton")
             knob.AutoButtonColor = false
-            knob.BackgroundColor3 =
-                Colors.Accent
+            knob.BackgroundColor3 = Colors.Accent
             knob.BorderSizePixel = 0
-            knob.AnchorPoint =
-                Vector2.new(0.5, 0.5)
-            knob.Position =
-                UDim2.new(
-                    config.soundVolume,
-                    0,
-                    0.5,
-                    0
-                )
-            knob.Size =
-                UDim2.fromOffset(14, 18)
+            knob.AnchorPoint = Vector2.new(0.5, 0.5)
+            knob.Position = UDim2.new(config.soundVolume, 0, 0.5, 0)
+            knob.Size = UDim2.fromOffset(14, 18)
             knob.Text = ""
-            knob.Parent =
-                sliderBackground
+            knob.Parent = sliderBackground
 
             local dragging = false
 
             local function update(pct)
-                pct =
-                    math.clamp(
-                        pct,
-                        0,
-                        1
-                    )
-
+                pct = math.clamp(pct, 0, 1)
                 config.soundVolume = pct
-
                 soundObj.Volume = pct
                 menuSoundObj.Volume = pct
-
-                fill.Size =
-                    UDim2.new(
-                        pct,
-                        0,
-                        1,
-                        0
-                    )
-
-                knob.Position =
-                    UDim2.new(
-                        pct,
-                        0,
-                        0.5,
-                        0
-                    )
-
-                label.Text =
-                    "Volume ("
-                    .. math.floor(
-                        pct * 100
-                    )
-                    .. "%)"
-
+                fill.Size = UDim2.new(pct, 0, 1, 0)
+                knob.Position = UDim2.new(pct, 0, 0.5, 0)
+                label.Text = "Volume (" .. math.floor(pct * 100) .. "%)"
                 saveConfig()
             end
 
-            knob.MouseButton1Down:Connect(function()
-                dragging = true
-            end)
+            knob.MouseButton1Down:Connect(function() dragging = true end)
 
             sliderBackground.InputBegan:Connect(function(input)
-                if input.UserInputType
-                    ~= Enum.UserInputType.MouseButton1 then
-
-                    return
-                end
-
+                if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
                 dragging = true
-
-                local position =
-                    UserInputService:GetMouseLocation().X
-                    - sliderBackground.AbsolutePosition.X
-
-                update(
-                    math.clamp(
-                        position
-                            / sliderBackground.AbsoluteSize.X,
-                        0,
-                        1
-                    )
-                )
+                local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                local position = mousePos.X - sliderBackground.AbsolutePosition.X
+                update(math.clamp(position / sliderBackground.AbsoluteSize.X, 0, 1))
             end)
 
             UserInputService.InputChanged:Connect(function(input)
-                if not dragging
-                    or input.UserInputType
-                        ~= Enum.UserInputType.MouseMovement then
-
-                    return
-                end
-
-                if not sliderBackground.Parent then
-                    return
-                end
-
-                local position =
-                    UserInputService:GetMouseLocation().X
-                    - sliderBackground.AbsolutePosition.X
-
-                update(
-                    math.clamp(
-                        position
-                            / sliderBackground.AbsoluteSize.X,
-                        0,
-                        1
-                    )
-                )
+                if not dragging or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+                if not sliderBackground.Parent then return end
+                local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset() -- FIXED
+                local position = mousePos.X - sliderBackground.AbsolutePosition.X
+                update(math.clamp(position / sliderBackground.AbsoluteSize.X, 0, 1))
             end)
 
             UserInputService.InputEnded:Connect(function(input)
-                if input.UserInputType
-                    == Enum.UserInputType.MouseButton1 then
-
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
                     dragging = false
                 end
             end)
@@ -3739,152 +2100,54 @@ local function init()
 
         addLabel("Button Sounds", 1)
 
-        addCheck(
-            "Button Sounds",
-            function()
-                return config.guiSounds
-            end,
-            function(value)
-                config.guiSounds = value
-            end,
-            2,
-            "Play sounds on button clicks"
-        )
+        addCheck("Button Sounds", function() return config.guiSounds end, function(value) config.guiSounds = value end, 2, "Play sounds on button clicks")
 
-        addTextRow(
-            "Sound ID",
-            function()
-                return config.soundId
-            end,
-            function(value)
-                config.soundId = value
-            end,
-            3,
-            "0"
-        )
+        addTextRow("Sound ID", function() return config.soundId end, function(value) config.soundId = value end, 3, "0")
 
-        addLabel(
-            "Open / Close Sounds",
-            4
-        )
+        addLabel("Open / Close Sounds", 4)
 
-        addCheck(
-            "Open/Close Sounds",
-            function()
-                return config.menuSounds
-            end,
-            function(value)
-                config.menuSounds = value
-            end,
-            5,
-            "Play sounds on menu open/close"
-        )
+        addCheck("Open/Close Sounds", function() return config.menuSounds end, function(value) config.menuSounds = value end, 5, "Play sounds on menu open/close")
 
-        addTextRow(
-            "Open ID",
-            function()
-                return config.openSoundId
-            end,
-            function(value)
-                config.openSoundId = value
-            end,
-            6,
-            "0"
-        )
+        addTextRow("Open ID", function() return config.openSoundId end, function(value) config.openSoundId = value end, 6, "0")
 
-        addTextRow(
-            "Close ID",
-            function()
-                return config.closeSoundId
-            end,
-            function(value)
-                config.closeSoundId = value
-            end,
-            7,
-            "0"
-        )
+        addTextRow("Close ID", function() return config.closeSoundId end, function(value) config.closeSoundId = value end, 7, "0")
 
         addVolumeSlider(8)
 
-        addLabel(
-            "Visual Settings",
-            9
-        )
+        addLabel("Visual Settings", 9)
 
-        addCheck(
-            "Blur Background",
-            function()
-                return getSetting(
-                    "noxvape",
-                    "blur",
-                    "enabled",
-                    false
-                )
-            end,
-            function(value)
-                setSetting(
-                    "noxvape",
-                    "blur",
-                    "enabled",
-                    value
-                )
-
-                updateBlur()
-            end,
-            10,
-            "Blur background when GUI is open"
-        )
+        addCheck("Blur Background", function()
+            return getSetting("noxvape", "blur", "enabled", false)
+        end, function(value)
+            setSetting("noxvape", "blur", "enabled", value)
+            updateBlur()
+        end, 10, "Blur background when GUI is open")
 
         addLabel("Other", 11)
 
-        local selfDestructFrame =
-            Instance.new("Frame")
-
+        local selfDestructFrame = Instance.new("Frame")
         selfDestructFrame.BackgroundTransparency = 1
-        selfDestructFrame.Size =
-            UDim2.new(1, 0, 0, 42)
+        selfDestructFrame.Size = UDim2.new(1, 0, 0, 42)
         selfDestructFrame.LayoutOrder = 12
         selfDestructFrame.Parent = content
 
-        local selfDestructButton =
-            Instance.new("TextButton")
-
+        local selfDestructButton = Instance.new("TextButton")
         selfDestructButton.AutoButtonColor = false
-        selfDestructButton.BackgroundColor3 =
-            Colors.Action
+        selfDestructButton.BackgroundColor3 = Colors.Action
         selfDestructButton.BackgroundTransparency = 0
         selfDestructButton.BorderSizePixel = 0
-        selfDestructButton.Size =
-            UDim2.new(1, 0, 1, 0)
+        selfDestructButton.Size = UDim2.new(1, 0, 1, 0)
         selfDestructButton.FontFace = UIFont
         selfDestructButton.TextSize = 17
-        selfDestructButton.TextColor3 =
-            Colors.Text
-        selfDestructButton.Text =
-            "Self Destruct"
-        selfDestructButton.Parent =
-            selfDestructFrame
+        selfDestructButton.TextColor3 = Colors.Text
+        selfDestructButton.Text = "Self Destruct"
+        selfDestructButton.Parent = selfDestructFrame
 
         selfDestructButton.MouseEnter:Connect(function()
-            tw(
-                selfDestructButton,
-                {
-                    BackgroundColor3 =
-                        Colors.ActionHover
-                },
-                0.08
-            )
+            tw(selfDestructButton, { BackgroundColor3 = Colors.ActionHover }, 0.08)
         end)
-
         selfDestructButton.MouseLeave:Connect(function()
-            tw(
-                selfDestructButton,
-                {
-                    BackgroundColor3 =
-                        Colors.Action
-                },
-                0.08
-            )
+            tw(selfDestructButton, { BackgroundColor3 = Colors.Action }, 0.08)
         end)
 
         selfDestructButton.MouseButton1Click:Connect(function()
@@ -3892,10 +2155,7 @@ local function init()
             selfDestruct()
         end)
 
-        addTooltip(
-            selfDestructButton,
-            "Permanently destroy the GUI"
-        )
+        addTooltip(selfDestructButton, "Permanently destroy the GUI")
 
         settingsWindow = window
         settingsVisible = true
@@ -3907,201 +2167,104 @@ local function init()
     end)
 
     -- Search
-    local searchX =
-        tonumber(config.searchPosition.x)
-        or 300
+    local searchX = tonumber(config.searchPosition.x) or 300
+    local searchY = tonumber(config.searchPosition.y) or 50
+    local searchExpanded = config.searchExpanded or false
 
-    local searchY =
-        tonumber(config.searchPosition.y)
-        or 50
-
-    local searchExpanded =
-        config.searchExpanded
-        or false
-
-    local searchFrame =
-        Instance.new("Frame")
-
+    local searchFrame = Instance.new("Frame")
     searchFrame.Name = "SearchBar"
-    searchFrame.BackgroundColor3 =
-        Colors.Panel
+    searchFrame.BackgroundColor3 = Colors.Panel
     searchFrame.BackgroundTransparency = 0
     searchFrame.BorderSizePixel = 0
-    searchFrame.Size =
-        searchExpanded
-        and UDim2.fromOffset(420, 40)
-        or UDim2.fromOffset(220, 40)
-    searchFrame.Position =
-        UDim2.fromOffset(
-            searchX,
-            searchY
-        )
+    searchFrame.Size = searchExpanded and UDim2.fromOffset(420, 40) or UDim2.fromOffset(220, 40)
+    searchFrame.Position = UDim2.fromOffset(searchX, searchY)
     searchFrame.ZIndex = 30000
     searchFrame.Parent = screenGui
 
-    local searchHeader =
-        Instance.new("TextButton")
-
+    local searchHeader = Instance.new("TextButton")
     searchHeader.AutoButtonColor = false
-    searchHeader.BackgroundColor3 =
-        Colors.Panel
+    searchHeader.BackgroundColor3 = Colors.Panel
     searchHeader.BackgroundTransparency = 0
     searchHeader.BorderSizePixel = 0
-    searchHeader.Size =
-        UDim2.new(1, 0, 0, 40)
+    searchHeader.Size = UDim2.new(1, 0, 0, 40)
     searchHeader.Text = ""
     searchHeader.ZIndex = 30001
     searchHeader.Parent = searchFrame
 
-    makeDraggable(
-        searchFrame,
-        searchHeader,
-        "searchBar",
-        false
-    )
+    makeDraggable(searchFrame, searchHeader, "searchBar", false)
 
-    local searchBox =
-        Instance.new("TextBox")
-
-    searchBox.BackgroundColor3 =
-        Colors.ToggleOff
+    local searchBox = Instance.new("TextBox")
+    searchBox.BackgroundColor3 = Colors.ToggleOff
     searchBox.BackgroundTransparency = 0
     searchBox.BorderSizePixel = 0
-    searchBox.Position =
-        UDim2.fromOffset(42, 5)
-    searchBox.Size =
-        UDim2.new(1, -52, 1, -10)
+    searchBox.Position = UDim2.fromOffset(42, 5)
+    searchBox.Size = UDim2.new(1, -52, 1, -10)
     searchBox.FontFace = UIFont
     searchBox.TextSize = 18
-    searchBox.TextColor3 =
-        Colors.Text
-    searchBox.PlaceholderText =
-        "Search features..."
-    searchBox.PlaceholderColor3 =
-        Colors.MutedText
+    searchBox.TextColor3 = Colors.Text
+    searchBox.PlaceholderText = "Search features..."
+    searchBox.PlaceholderColor3 = Colors.MutedText
     searchBox.Text = ""
     searchBox.ZIndex = 30002
     searchBox.Parent = searchFrame
 
-    local searchButton =
-        Instance.new("TextButton")
-
+    local searchButton = Instance.new("TextButton")
     searchButton.AutoButtonColor = false
-    searchButton.BackgroundColor3 =
-        Colors.Action
+    searchButton.BackgroundColor3 = Colors.Action
     searchButton.BackgroundTransparency = 0
     searchButton.BorderSizePixel = 0
-    searchButton.Position =
-        UDim2.fromOffset(5, 5)
-    searchButton.Size =
-        UDim2.fromOffset(30, 30)
+    searchButton.Position = UDim2.fromOffset(5, 5)
+    searchButton.Size = UDim2.fromOffset(30, 30)
     searchButton.Text = ""
     searchButton.ZIndex = 30003
     searchButton.Parent = searchFrame
 
-    local searchIcon =
-        Instance.new("ImageLabel")
-
+    local searchIcon = Instance.new("ImageLabel")
     searchIcon.BackgroundTransparency = 1
-    searchIcon.Size =
-        UDim2.fromOffset(18, 18)
-    searchIcon.Position =
-        UDim2.new(0.5, -9, 0.5, -9)
-    searchIcon.Image =
-        "rbxassetid://6031154871"
-    searchIcon.ImageColor3 =
-        Colors.Text
-    searchIcon.ScaleType =
-        Enum.ScaleType.Fit
+    searchIcon.Size = UDim2.fromOffset(18, 18)
+    searchIcon.Position = UDim2.new(0.5, -9, 0.5, -9)
+    searchIcon.Image = "rbxassetid://6031154871"
+    searchIcon.ImageColor3 = Colors.Text
+    searchIcon.ScaleType = Enum.ScaleType.Fit
     searchIcon.ZIndex = 30004
     searchIcon.Parent = searchButton
 
-    addTooltip(
-        searchButton,
-        "Toggle search bar width"
-    )
+    addTooltip(searchButton, "Toggle search bar width")
 
     task.spawn(function()
-        if type(request) == "function"
-            and type(writefile) == "function" then
-
+        if type(request) == "function" and type(writefile) == "function" then
             pcall(function()
-                local response =
-                    request({
-                        Url = SEARCH_ICON_URL,
-                        Method = "GET"
-                    })
-
-                if response
-                    and response.Success
-                    and response.Body then
-
-                    writefile(
-                        "nox_search_icon.png",
-                        response.Body
-                    )
-
-                    local asset =
-                        getCustomAsset(
-                            "nox_search_icon.png"
-                        )
-
-                    if asset then
-                        searchIcon.Image = asset
-                    end
+                local response = request({ Url = SEARCH_ICON_URL, Method = "GET" })
+                if response and response.Success and response.Body then
+                    writefile("nox_search_icon.png", response.Body)
+                    local asset = getCustomAsset("nox_search_icon.png")
+                    if asset then searchIcon.Image = asset end
                 end
             end)
         end
     end)
 
     local function toggleSearchExpand()
-        searchExpanded =
-            not searchExpanded
-
-        config.searchExpanded =
-            searchExpanded
+        searchExpanded = not searchExpanded
+        config.searchExpanded = searchExpanded
 
         if searchExpanded then
-            searchFrame.Size =
-                UDim2.fromOffset(
-                    420,
-                    40
-                )
-
-            searchButton.BackgroundColor3 =
-                Colors.Accent
-
-            searchIcon.ImageColor3 =
-                Colors.Accent
+            searchFrame.Size = UDim2.fromOffset(420, 40)
+            searchButton.BackgroundColor3 = Colors.Accent
+            searchIcon.ImageColor3 = Colors.Accent
         else
-            searchFrame.Size =
-                UDim2.fromOffset(
-                    220,
-                    40
-                )
-
-            searchButton.BackgroundColor3 =
-                Colors.Action
-
-            searchIcon.ImageColor3 =
-                Colors.Text
+            searchFrame.Size = UDim2.fromOffset(220, 40)
+            searchButton.BackgroundColor3 = Colors.Action
+            searchIcon.ImageColor3 = Colors.Text
         end
-
         saveConfig()
     end
 
     searchButton.MouseEnter:Connect(function()
-        searchButton.BackgroundColor3 =
-            searchExpanded
-            and Colors.ToggleOnHover
-            or Colors.ActionHover
+        searchButton.BackgroundColor3 = searchExpanded and Colors.ToggleOnHover or Colors.ActionHover
     end)
-
     searchButton.MouseLeave:Connect(function()
-        searchButton.BackgroundColor3 =
-            searchExpanded
-            and Colors.Accent
-            or Colors.Action
+        searchButton.BackgroundColor3 = searchExpanded and Colors.Accent or Colors.Action
     end)
 
     searchButton.MouseButton1Click:Connect(function()
@@ -4110,77 +2273,28 @@ local function init()
     end)
 
     filterButtons = function(query)
-        if not tabPanel.Visible then
-            return
-        end
-
+        if not tabPanel.Visible then return end
         query = string.lower(query)
 
         for categoryName, card in pairs(categoryFrames) do
             if card and card.Parent then
-                local scroll =
-                    card:FindFirstChild("Buttons")
-
+                local scroll = card:FindFirstChild("Buttons")
                 if scroll then
                     local anyVisible = false
-
-                    for _, child in ipairs(
-                        scroll:GetChildren()
-                    ) do
-                        if child:IsA("Frame")
-                            and child.Name:match(
-                                "_Wrapper$"
-                            ) then
-
-                            local button =
-                                child:FindFirstChildOfClass(
-                                    "TextButton"
-                                )
-
+                    for _, child in ipairs(scroll:GetChildren()) do
+                        if child:IsA("Frame") and child.Name:match("_Wrapper$") then
+                            local button = child:FindFirstChildOfClass("TextButton")
                             if button then
-                                local moduleName =
-                                    button:FindFirstChild(
-                                        "ModuleName"
-                                    )
-
-                                local text =
-                                    (
-                                        moduleName
-                                        and moduleName.Text ~= ""
-                                    )
-                                    and moduleName.Text
-                                    or button.Name
-
-                                local visible =
-                                    query == ""
-                                    or string.find(
-                                        string.lower(text),
-                                        query,
-                                        1,
-                                        true
-                                    ) ~= nil
-
-                                child.Visible =
-                                    visible
-
-                                if visible then
-                                    anyVisible = true
-                                end
+                                local moduleName = button:FindFirstChild("ModuleName")
+                                local text = (moduleName and moduleName.Text ~= "") and moduleName.Text or button.Name
+                                local visible = query == "" or string.find(string.lower(text), query, 1, true) ~= nil
+                                child.Visible = visible
+                                if visible then anyVisible = true end
                             end
                         end
                     end
 
-                    card.Visible =
-                        (
-                            query ~= ""
-                            and anyVisible
-                        )
-                        or (
-                            query == ""
-                            and categoryStates[
-                                categoryName
-                            ]
-                        )
+                    card.Visible = (query ~= "" and anyVisible) or (query == "" and categoryStates[categoryName])
                 end
             end
         end
@@ -4192,133 +2306,62 @@ local function init()
 
     -- Input
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if input.UserInputType
-            ~= Enum.UserInputType.Keyboard then
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
-            return
-        end
-
-        local key =
-            input.KeyCode ~= Enum.KeyCode.Unknown
-            and input.KeyCode.Name
-            or nil
-
-        if not key then
-            return
-        end
+        local key = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil
+        if not key then return end
 
         if waitingForBind then
-            if key == "Backspace"
-                or key == "Escape" then
-
-                config.keybinds[
-                    waitingForBind.category
-                ][waitingForBind.feature] = nil
-
-                waitingForBind.button.Text =
-                    "NONE"
+            if key == "Backspace" or key == "Escape" then
+                config.keybinds[waitingForBind.category][waitingForBind.feature] = nil
+                waitingForBind.button.Text = "NONE"
             else
                 local used = false
-
-                for category, features in pairs(
-                    config.keybinds
-                ) do
+                for category, features in pairs(config.keybinds) do
                     if type(features) == "table" then
-                        for feature, bound in pairs(
-                            features
-                        ) do
-                            if bound == key
-                                and not (
-                                    category
-                                        == waitingForBind.category
-                                    and feature
-                                        == waitingForBind.feature
-                                ) then
-
+                        for feature, bound in pairs(features) do
+                            if bound == key and not (category == waitingForBind.category and feature == waitingForBind.feature) then
                                 used = true
                                 break
                             end
                         end
                     end
-
-                    if used then
-                        break
-                    end
+                    if used then break end
                 end
 
                 if used then
-                    notifyError(
-                        "Key already bound!"
-                    )
-
-                    waitingForBind.button.Text =
-                        getKeybind(
-                            waitingForBind.category,
-                            waitingForBind.feature
-                        )
-                        or "NONE"
+                    notifyError("Key already bound!")
+                    waitingForBind.button.Text = getKeybind(waitingForBind.category, waitingForBind.feature) or "NONE"
                 else
-                    config.keybinds[
-                        waitingForBind.category
-                    ][waitingForBind.feature] =
-                        key
-
-                    waitingForBind.button.Text =
-                        key
+                    config.keybinds[waitingForBind.category][waitingForBind.feature] = key
+                    waitingForBind.button.Text = key
                 end
             end
 
-            waitingForBind.button.BackgroundColor3 =
-                Colors.Action
-
+            waitingForBind.button.BackgroundColor3 = Colors.Action
             waitingForBind = nil
-
             saveConfig()
-
             return
         end
 
-        if gameProcessed then
-            return
-        end
+        if gameProcessed then return end
 
         if key == config.guiKeybind then
             hideTooltip()
-
-            setMenuVisible(
-                not tabPanel.Visible
-            )
-
+            setMenuVisible(not tabPanel.Visible)
             return
         end
 
-        if UserInputService:GetFocusedTextBox() then
-            return
-        end
+        if UserInputService:GetFocusedTextBox() then return end
 
-        for categoryName, features in pairs(
-            config.keybinds
-        ) do
-            if type(features) ~= "table" then
-                continue
-            end
-
-            for featureName, bound in pairs(
-                features
-            ) do
+        for categoryName, features in pairs(config.keybinds) do
+            if type(features) ~= "table" then continue end
+            for featureName, bound in pairs(features) do
                 if bound == key then
-                    local data =
-                        buttonData[
-                            categoryName
-                        ]
-                        and buttonData[
-                            categoryName
-                        ][featureName]
-
+                    local data = buttonData[categoryName] and buttonData[categoryName][featureName]
                     if data and data.toggle then
                         data.toggle()
                     end
-
                     break
                 end
             end
@@ -4326,30 +2369,18 @@ local function init()
     end)
 
     playerGui.ChildAdded:Connect(function(child)
-        if not otherGuisDisabled then
-            return
-        end
-
-        if child:IsA("ScreenGui")
-            and child ~= screenGui then
-
+        if not otherGuisDisabled then return end
+        if child:IsA("ScreenGui") and child ~= screenGui then
             task.defer(function()
-                if otherGuisDisabled
-                    and child.Parent then
-
-                    disabledGuiStates[child] =
-                        child.Enabled
-
+                if otherGuisDisabled and child.Parent then
+                    disabledGuiStates[child] = child.Enabled
                     child.Enabled = false
                 end
             end)
         end
     end)
 
-    setMenuVisible(
-        tabPanel.Visible
-    )
-
+    setMenuVisible(tabPanel.Visible)
     saveConfig()
 end
 
@@ -4357,113 +2388,46 @@ end
 local NoxLib = {}
 
 function NoxLib.addCategory(name)
-    assert(
-        type(name) == "string"
-            and name ~= "",
-        "NoxLib.addCategory: name must be a non-empty string"
-    )
-
-    if _categoryMap[name] then
-        return
-    end
-
-    local category = {
-        name = name,
-        items = {}
-    }
-
-    table.insert(
-        _categories,
-        category
-    )
-
+    assert(type(name) == "string" and name ~= "", "NoxLib.addCategory: name must be a non-empty string")
+    if _categoryMap[name] then return end
+    local category = { name = name, items = {} }
+    table.insert(_categories, category)
     _categoryMap[name] = category
 end
 
-function NoxLib.addButton(
-    categoryName,
-    opts
-)
-    assert(
-        type(categoryName) == "string",
-        "NoxLib.addButton: categoryName must be string"
-    )
-
-    assert(
-        type(opts) == "table",
-        "NoxLib.addButton: opts must be table"
-    )
-
-    assert(
-        type(opts.name) == "string"
-            and opts.name ~= "",
-        "NoxLib.addButton: opts.name required"
-    )
+function NoxLib.addButton(categoryName, opts)
+    assert(type(categoryName) == "string", "NoxLib.addButton: categoryName must be string")
+    assert(type(opts) == "table", "NoxLib.addButton: opts must be table")
+    assert(type(opts.name) == "string" and opts.name ~= "", "NoxLib.addButton: opts.name required")
 
     if not _categoryMap[categoryName] then
         NoxLib.addCategory(categoryName)
     end
 
-    local category =
-        _categoryMap[categoryName]
-
-    table.insert(
-        category.items,
-        {
-            name = opts.name,
-
-            toggle =
-                opts.toggle ~= false,
-
-            description =
-                opts.description
-                or "",
-
-            action =
-                opts.action
-                or function() end,
-
-            settings =
-                opts.settings
-        }
-    )
+    local category = _categoryMap[categoryName]
+    table.insert(category.items, {
+        name = opts.name,
+        toggle = opts.toggle ~= false,
+        description = opts.description or "",
+        action = opts.action or function() end,
+        settings = opts.settings
+    })
 end
 
 function NoxLib.notify(msg, kind)
-    createNotification(
-        msg,
-        kind or "enabled"
-    )
+    createNotification(msg, kind or "enabled")
 end
 
-function NoxLib.notifyEnabled(msg)
-    notifyEnabled(msg)
-end
-
-function NoxLib.notifyWarning(msg)
-    notifyWarning(msg)
-end
-
-function NoxLib.notifyError(msg)
-    notifyError(msg)
-end
+function NoxLib.notifyEnabled(msg) notifyEnabled(msg) end
+function NoxLib.notifyWarning(msg) notifyWarning(msg) end
+function NoxLib.notifyError(msg) notifyError(msg) end
 
 NoxLib.Features = Features
-
-NoxLib.getSetting =
-    getSetting
-
-NoxLib.setSetting =
-    setSetting
-
-NoxLib.saveConfig =
-    saveConfig
-
-NoxLib.setMenuVisible =
-    setMenuVisible
-
-NoxLib.Colors =
-    Colors
+NoxLib.getSetting = getSetting
+NoxLib.setSetting = setSetting
+NoxLib.saveConfig = saveConfig
+NoxLib.setMenuVisible = setMenuVisible
+NoxLib.Colors = Colors
 
 function NoxLib.init()
     init()
