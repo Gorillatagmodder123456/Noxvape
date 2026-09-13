@@ -17,6 +17,7 @@ local SETTINGS_ICON_URL = "https://github.com/Gorillatagmodder123456/a/raw/main/
 local RGB_SPEED = 0.75
 local RGB_EPOCH = tick()
 local DEFAULT_MENU_COLOR = Color3.fromRGB(55, 150, 200)
+local DEFAULT_TEXT_COLOR = Color3.fromRGB(235, 240, 245)
 local Colors = {
 	Panel = Color3.fromRGB(4, 5, 7),
 	PanelHover = Color3.fromRGB(9, 11, 15),
@@ -30,7 +31,7 @@ local Colors = {
 	Accent = DEFAULT_MENU_COLOR,
 	Warning = Color3.fromRGB(255, 165, 0),
 	Error = Color3.fromRGB(220, 50, 50),
-	Text = Color3.fromRGB(235, 240, 245),
+	Text = DEFAULT_TEXT_COLOR,
 	MutedText = Color3.fromRGB(140, 150, 160),
 	Tooltip = Color3.fromRGB(3, 4, 6)
 }
@@ -139,6 +140,11 @@ local config = {
 		r = 55 / 255,
 		g = 150 / 255,
 		b = 200 / 255
+	},
+	textColor = {
+		r = 235 / 255,
+		g = 240 / 255,
+		b = 245 / 255
 	}
 }
 local function loadConfig()
@@ -239,6 +245,17 @@ local function repairConfig()
 		config.menuColor.g = tonumber(config.menuColor.g) or 150 / 255
 		config.menuColor.b = tonumber(config.menuColor.b) or 200 / 255
 	end
+	if type(config.textColor) ~= "table" then
+		config.textColor = {
+			r = 235 / 255,
+			g = 240 / 255,
+			b = 245 / 255
+		}
+	else
+		config.textColor.r = tonumber(config.textColor.r) or 235 / 255
+		config.textColor.g = tonumber(config.textColor.g) or 240 / 255
+		config.textColor.b = tonumber(config.textColor.b) or 245 / 255
+	end
 	config.settings["noxvape"] = config.settings["noxvape"] or {}
 end
 repairConfig()
@@ -256,6 +273,7 @@ do
 	Colors.Accent = set.Accent
 	Colors.ToggleOn = set.ToggleOn
 	Colors.ToggleOnHover = set.ToggleOnHover
+	Colors.Text = Color3.new(config.textColor.r, config.textColor.g, config.textColor.b)
 end
 local function ensureCategoryData(cat)
 	if type(config.features[cat]) ~= "table" then
@@ -383,6 +401,29 @@ local function applyMenuColorToGui(newColor)
 			if d.TextColor3 == oldAccent then
 				d.TextColor3 = Colors.Accent
 			end
+		end
+	end
+end
+local function applyTextColorToGui(newColor)
+	local oldText = Colors.Text
+	Colors.Text = newColor
+	config.textColor = {
+		r = newColor.R,
+		g = newColor.G,
+		b = newColor.B
+	}
+	saveConfig()
+	for _, d in ipairs(screenGui:GetDescendants()) do
+		if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
+			if d.TextColor3 == oldText then
+				d.TextColor3 = Colors.Text
+			end
+		end
+	end
+	if tooltip then
+		local lbl = tooltip:FindFirstChildOfClass("TextLabel")
+		if lbl then
+			lbl.TextColor3 = Colors.Text
 		end
 	end
 end
@@ -1406,7 +1447,8 @@ local function captureCurrentConfig()
 		openSoundId = config.openSoundId,
 		closeSoundId = config.closeSoundId,
 		guiKeybind = config.guiKeybind,
-		menuColor = HttpService:JSONDecode(HttpService:JSONEncode(config.menuColor))
+		menuColor = HttpService:JSONDecode(HttpService:JSONEncode(config.menuColor)),
+		textColor = HttpService:JSONDecode(HttpService:JSONEncode(config.textColor))
 	}
 end
 local function saveProfile(name)
@@ -1482,6 +1524,10 @@ local function applyProfileData(data)
 	if type(data.menuColor) == "table" then
 		local newColor = Color3.new(data.menuColor.r, data.menuColor.g, data.menuColor.b)
 		applyMenuColorToGui(newColor)
+	end
+	if type(data.textColor) == "table" then
+		local newColor = Color3.new(data.textColor.r, data.textColor.g, data.textColor.b)
+		applyTextColorToGui(newColor)
 	end
 	for cat, feats in pairs(buttonData) do
 		for name, d in pairs(feats) do
@@ -2461,18 +2507,27 @@ local function createSettingsWindow()
 		applyMenuColorToGui(DEFAULT_MENU_COLOR)
 		notifyEnabled("Menu color reset to default")
 	end, 13, false)
-	addLabel("Managers", 14)
+	addLabel("Text Color", 14)
+	local currentTextColor = Color3.new(config.textColor.r, config.textColor.g, config.textColor.b)
+	buildColorPickerRow(content, 15, currentTextColor, function(c)
+		applyTextColorToGui(c)
+	end, "Text Color")
+	addBtn("Revert Text to Default", function()
+		applyTextColorToGui(DEFAULT_TEXT_COLOR)
+		notifyEnabled("Text color reset to default")
+	end, 16, false)
+	addLabel("Managers", 17)
 	addBtn("Fast Flag Manager", function()
 		createFastFlagWindow()
-	end, 15, false)
+	end, 18, false)
 	addBtn("Profiles", function()
 		createProfilesWindow()
-	end, 16, false)
-	addLabel("Other", 17)
+	end, 19, false)
+	addLabel("Other", 20)
 	local sf = Instance.new("Frame")
 	sf.BackgroundTransparency = 1
 	sf.Size = UDim2.new(1, 0, 0, 42)
-	sf.LayoutOrder = 18
+	sf.LayoutOrder = 21
 	sf.Parent = content
 	local sd = Instance.new("TextButton")
 	sd.AutoButtonColor = false
