@@ -14,7 +14,6 @@ local PROFILES_FOLDER = "noxvape_profiles"
 local FFLAGS_FOLDER_NAME = "noxvape_fastflags"
 local LOGO_FILE = "noxvapev4.png"
 local CURSOR_FILE = "nox_cursor.png"
-local SETTINGS_ICON_FILE = "nox_settings_icon.png"
 local POGCHAMP_FILE = "nox_pogchamp.png"
 local LOGO_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/noxvapev4.png"
 local POGCHAMP_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/pogchamp-removebg-preview.png"
@@ -28,22 +27,23 @@ local DEFAULT_TEXT_COLOR = Color3.fromRGB(235, 240, 245)
 
 -- LIGHTER COLOR THEME
 local Colors = {
-	Panel = Color3.fromRGB(25, 27, 32),
-	PanelHover = Color3.fromRGB(35, 38, 45),
-	ToggleOff = Color3.fromRGB(40, 42, 50),
-	ToggleOffHover = Color3.fromRGB(50, 52, 60),
+	Panel = Color3.fromRGB(28, 30, 36),
+	PanelHover = Color3.fromRGB(38, 41, 48),
+	ToggleOff = Color3.fromRGB(45, 48, 56),
+	ToggleOffHover = Color3.fromRGB(55, 58, 66),
 	ToggleOn = Color3.fromRGB(30, 100, 140),
 	ToggleOnHover = Color3.fromRGB(40, 120, 165),
-	Action = Color3.fromRGB(35, 38, 45),
-	ActionHover = Color3.fromRGB(50, 55, 65),
-	Setting = Color3.fromRGB(30, 32, 38),
+	Action = Color3.fromRGB(42, 45, 54),
+	ActionHover = Color3.fromRGB(58, 62, 72),
+	Setting = Color3.fromRGB(36, 38, 46),
 	Accent = DEFAULT_MENU_COLOR,
 	Warning = Color3.fromRGB(255, 165, 0),
 	Error = Color3.fromRGB(220, 50, 50),
 	Success = Color3.fromRGB(80, 200, 120),
 	Text = DEFAULT_TEXT_COLOR,
-	MutedText = Color3.fromRGB(160, 170, 180),
-	Tooltip = Color3.fromRGB(15, 17, 20)
+	MutedText = Color3.fromRGB(170, 180, 190),
+	Tooltip = Color3.fromRGB(18, 20, 24),
+	Info = Color3.fromRGB(100, 180, 255)
 }
 
 local UIFont = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
@@ -275,7 +275,7 @@ local function setupCursor()
 		cursorFrame.Parent = screenGui
 	end
 
-	-- Load exactly like notification image
+	-- Load exactly like notification image does
 	task.spawn(function()
 		if type(isfile) == "function" and isfile(CURSOR_FILE) then
 			local a = safeGetCustomAsset(CURSOR_FILE)
@@ -400,7 +400,7 @@ local function createNotification(msg, kind)
 	local n = Instance.new("Frame")
 	n.Name = "Notification"
 	n.BackgroundColor3 = Colors.Panel
-	n.BackgroundTransparency = 0.12
+	n.BackgroundTransparency = 0.05
 	n.BorderSizePixel = 0
 	n.Size = UDim2.fromOffset(330, 50)
 	n.LayoutOrder = notifCounter
@@ -564,6 +564,12 @@ local function makeDraggable(obj, handle, posName, isNox, requireMenu)
 end
 
 local buildColorPickerRow
+
+-- ============ STATE ============
+local buttonData = {}
+local categoryFrames = {}
+local categoryStates = {}
+local categoryTabButtons = {}
 
 -- ============ FEATURES API ============
 local Features = {}
@@ -895,6 +901,14 @@ local settingsVisible = false
 local fastFlagWindow = nil
 local profilesWindow = nil
 local filterButtons
+
+local function refreshTabHighlight()
+	for cn, tb in pairs(categoryTabButtons) do
+		if tb and tb.Parent then
+			tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action
+		end
+	end
+end
 
 local function setMenuVisible(visible)
 	if not tabPanel then return end
@@ -1619,7 +1633,6 @@ local function init()
 		local sx, sy = getPosition(catName, 240 + ((ci - 1) * 218), 75)
 		local card = Instance.new("Frame")
 		card.Name = catName; card.BackgroundColor3 = Colors.Panel
-		card.BackgroundTransparency = 0.1 -- Lighter theme
 		card.BorderSizePixel = 0; card.Size = UDim2.fromOffset(210, 560)
 		card.Position = UDim2.fromOffset(sx, sy)
 		card.Visible = config.tabs[catName] ~= false
@@ -1629,7 +1642,6 @@ local function init()
 		local hdr = Instance.new("TextButton")
 		hdr.Name = "Header"; hdr.AutoButtonColor = false
 		hdr.BackgroundColor3 = Colors.Panel; hdr.BorderSizePixel = 0
-		hdr.BackgroundTransparency = 0.1
 		hdr.Size = UDim2.new(1,0,0,46); hdr.Text = ""
 		hdr.ZIndex = 11020 + ci; hdr.Parent = card
 		local cl2 = Instance.new("TextLabel")
@@ -1929,14 +1941,12 @@ local function init()
 	local ny = tonumber(config.noxPosition.y) or 75
 	tabPanel = Instance.new("Frame")
 	tabPanel.Name = "noxvape"; tabPanel.BackgroundColor3 = Colors.Panel
-	tabPanel.BackgroundTransparency = 0.1
 	tabPanel.BorderSizePixel = 0; tabPanel.Size = UDim2.fromOffset(210,560)
 	tabPanel.Position = UDim2.fromOffset(nx, ny)
 	tabPanel.ClipsDescendants = true; tabPanel.Parent = screenGui
 	local th = Instance.new("TextButton")
 	th.Name = "Header"; th.AutoButtonColor = false
 	th.BackgroundColor3 = Colors.Panel; th.BorderSizePixel = 0
-	th.BackgroundTransparency = 0.1
 	th.Size = UDim2.new(1,0,0,46); th.Text = ""; th.Parent = tabPanel
 	local logo = Instance.new("ImageLabel")
 	logo.BackgroundTransparency = 1; logo.AnchorPoint = Vector2.new(0.5,0.5)
@@ -1970,19 +1980,19 @@ local function init()
 		local cn = catDef.name
 		local tb = Instance.new("TextButton")
 		tb.Name = cn; tb.LayoutOrder = i; tb.AutoButtonColor = false
-		-- Highlight active tab
 		tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action
 		tb.BorderSizePixel = 0
 		tb.Size = UDim2.new(1,0,0,36); tb.FontFace = UIFont
 		tb.TextSize = 17; tb.TextColor3 = Colors.Text; tb.Text = cn
 		tb.TextXAlignment = Enum.TextXAlignment.Center; tb.Parent = ts
+		categoryTabButtons[cn] = tb
 		tb.MouseButton1Click:Connect(function()
 			playButtonSound()
 			local c = categoryFrames[cn]
 			if not c or not c.Parent then return end
 			categoryStates[cn] = not categoryStates[cn]
 			c.Visible = categoryStates[cn]
-			tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action -- Update tab color
+			tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action
 			config.tabs[cn] = categoryStates[cn]
 			saveConfig()
 		end)
@@ -2002,16 +2012,16 @@ local function init()
 	si.Image = "rbxassetid://6034654127"; si.Parent = sb
 	task.spawn(function()
 		local loaded = false
-		if type(isfile) == "function" and isfile(SETTINGS_ICON_FILE) then
-			local a = safeGetCustomAsset(SETTINGS_ICON_FILE)
+		if type(isfile) == "function" and isfile("nox_settings_icon.png") then
+			local a = safeGetCustomAsset("nox_settings_icon.png")
 			if a then si.Image = a; loaded = true end
 		end
 		if not loaded and type(request) == "function" and type(writefile) == "function" then
 			pcall(function()
 				local r = request({Url = SETTINGS_ICON_URL, Method = "GET"})
 				if r and r.Success and r.Body then
-					writefile(SETTINGS_ICON_FILE, r.Body)
-					local a = safeGetCustomAsset(SETTINGS_ICON_FILE)
+					writefile("nox_settings_icon.png", r.Body)
+					local a = safeGetCustomAsset("nox_settings_icon.png")
 					if a then si.Image = a end
 				end
 			end)
@@ -2020,13 +2030,11 @@ local function init()
 	sb.MouseButton1Click:Connect(function() playButtonSound() createSettingsWindow() end)
 	local sxf = Instance.new("Frame")
 	sxf.Name = "SearchBar"; sxf.BackgroundColor3 = Colors.Panel
-	sxf.BackgroundTransparency = 0.1
 	sxf.BorderSizePixel = 0; sxf.Size = UDim2.fromOffset(220,40)
 	sxf.Position = UDim2.fromOffset(tonumber(config.searchPosition.x) or 300, tonumber(config.searchPosition.y) or 50)
 	sxf.Parent = screenGui
 	local sh = Instance.new("TextButton")
 	sh.AutoButtonColor = false; sh.BackgroundColor3 = Colors.Panel
-	sh.BackgroundTransparency = 0.1
 	sh.BorderSizePixel = 0; sh.Size = UDim2.new(1,0,0,40)
 	sh.Text = ""; sh.Parent = sxf
 	makeDraggable(sxf, sh, "searchBar", false)
