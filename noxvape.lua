@@ -26,23 +26,24 @@ local RGB_EPOCH = tick()
 local DEFAULT_MENU_COLOR = Color3.fromRGB(55, 150, 200)
 local DEFAULT_TEXT_COLOR = Color3.fromRGB(235, 240, 245)
 
+-- LIGHTER COLOR THEME
 local Colors = {
-	Panel = Color3.fromRGB(4, 5, 7),
-	PanelHover = Color3.fromRGB(9, 11, 15),
-	ToggleOff = Color3.fromRGB(7, 9, 12),
-	ToggleOffHover = Color3.fromRGB(14, 14, 14),
+	Panel = Color3.fromRGB(25, 27, 32),
+	PanelHover = Color3.fromRGB(35, 38, 45),
+	ToggleOff = Color3.fromRGB(40, 42, 50),
+	ToggleOffHover = Color3.fromRGB(50, 52, 60),
 	ToggleOn = Color3.fromRGB(30, 100, 140),
 	ToggleOnHover = Color3.fromRGB(40, 120, 165),
-	Action = Color3.fromRGB(10, 12, 16),
-	ActionHover = Color3.fromRGB(20, 20, 22),
-	Setting = Color3.fromRGB(5, 7, 10),
+	Action = Color3.fromRGB(35, 38, 45),
+	ActionHover = Color3.fromRGB(50, 55, 65),
+	Setting = Color3.fromRGB(30, 32, 38),
 	Accent = DEFAULT_MENU_COLOR,
 	Warning = Color3.fromRGB(255, 165, 0),
 	Error = Color3.fromRGB(220, 50, 50),
 	Success = Color3.fromRGB(80, 200, 120),
 	Text = DEFAULT_TEXT_COLOR,
-	MutedText = Color3.fromRGB(140, 150, 160),
-	Tooltip = Color3.fromRGB(3, 4, 6)
+	MutedText = Color3.fromRGB(160, 170, 180),
+	Tooltip = Color3.fromRGB(15, 17, 20)
 }
 
 local UIFont = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
@@ -106,7 +107,6 @@ local config = {
 	features = {}, tabs = {}, positions = {}, keybinds = {}, settings = {},
 	noxPosition = { x = 18, y = 75 },
 	searchPosition = { x = 300, y = 50 },
-	overlayPosition = { x = 400, y = 200 },
 	guiKeybind = "RightShift",
 	guiSounds = false, soundId = "0",
 	menuSounds = false, openSoundId = "0", closeSoundId = "0",
@@ -145,7 +145,7 @@ local function repairConfig()
 	for _, k in ipairs({"features","tabs","positions","keybinds","settings"}) do
 		if type(config[k]) ~= "table" then config[k] = {} end
 	end
-	for _, posKey in ipairs({"noxPosition","searchPosition","overlayPosition"}) do
+	for _, posKey in ipairs({"noxPosition","searchPosition"}) do
 		if type(config[posKey]) ~= "table" then config[posKey] = {x=100,y=100} end
 		config[posKey].x = tonumber(config[posKey].x) or 100
 		config[posKey].y = tonumber(config[posKey].y) or 100
@@ -161,7 +161,6 @@ local function repairConfig()
 	if type(config.textColor) ~= "table" then config.textColor = {r=235/255,g=240/255,b=245/255} end
 	if type(config.customCursor) ~= "boolean" then config.customCursor = false end
 	config.settings["noxvape"] = config.settings["noxvape"] or {}
-	config.settings["noxvape"]["overlay"] = config.settings["noxvape"]["overlay"] or {}
 end
 
 repairConfig()
@@ -264,55 +263,41 @@ local function updateCursorVisibility()
 	end)
 end
 
-local function tryLoadCursorFromDisk()
-	if type(isfile) ~= "function" then return false end
-	if not isfile(CURSOR_FILE) then return false end
-	local asset = safeGetCustomAsset(CURSOR_FILE)
-	if not asset then return false end
-	cursorAssetPath = asset
-	if cursorFrame then cursorFrame.Image = asset end
-	cursorLoaded = true
-	return true
-end
-
-local function tryDownloadCursor()
-	if type(request) ~= "function" or type(writefile) ~= "function" then return false end
-	local ok = pcall(function()
-		local r = request({Url = CURSOR_URL, Method = "GET"})
-		if r and r.Success and r.Body then
-			writefile(CURSOR_FILE, r.Body)
-		end
-	end)
-	if not ok then return false end
-	task.wait(0.15)
-	return tryLoadCursorFromDisk()
-end
-
 local function setupCursor()
 	if not cursorFrame then
 		cursorFrame = Instance.new("ImageLabel")
 		cursorFrame.Name = "NoxCursor"
 		cursorFrame.BackgroundTransparency = 1
-		cursorFrame.Size = UDim2.fromOffset(28, 28)
+		cursorFrame.Size = UDim2.fromOffset(24, 24)
 		cursorFrame.ZIndex = 999999
 		cursorFrame.Visible = false
-		cursorFrame.Image = CURSOR_FALLBACK
 		cursorFrame.ScaleType = Enum.ScaleType.Fit
 		cursorFrame.Parent = screenGui
 	end
 
-	local loadedNow = tryLoadCursorFromDisk()
-	if not loadedNow then
-		task.spawn(function()
-			local ok = tryDownloadCursor()
-			if not ok then
-				cursorAssetPath = CURSOR_FALLBACK
-				cursorLoaded = true
-				if cursorFrame then cursorFrame.Image = CURSOR_FALLBACK end
-			end
-			updateCursorVisibility()
-		end)
-	end
+	-- Load exactly like notification image
+	task.spawn(function()
+		if type(isfile) == "function" and isfile(CURSOR_FILE) then
+			local a = safeGetCustomAsset(CURSOR_FILE)
+			if a then cursorAssetPath = a end
+		end
+		if not cursorAssetPath and type(request) == "function" and type(writefile) == "function" then
+			pcall(function()
+				local r = request({Url = CURSOR_URL, Method = "GET"})
+				if r and r.Success and r.Body then
+					writefile(CURSOR_FILE, r.Body)
+					local a = safeGetCustomAsset(CURSOR_FILE)
+					if a then cursorAssetPath = a end
+				end
+			end)
+		end
+		if not cursorAssetPath then
+			cursorAssetPath = CURSOR_FALLBACK
+		end
+		cursorLoaded = true
+		if cursorFrame then cursorFrame.Image = cursorAssetPath end
+		updateCursorVisibility()
+	end)
 
 	if not cursorConn then
 		cursorConn = RunService.RenderStepped:Connect(function()
@@ -322,8 +307,6 @@ local function setupCursor()
 			end
 		end)
 	end
-
-	updateCursorVisibility()
 end
 
 setupCursor()
@@ -574,264 +557,13 @@ local function makeDraggable(obj, handle, posName, isNox, requireMenu)
 			if ec then ec:Disconnect(); ec = nil end
 			if isNox then config.noxPosition = {x = obj.Position.X.Offset, y = obj.Position.Y.Offset}
 			elseif posName == "searchBar" then config.searchPosition = {x = obj.Position.X.Offset, y = obj.Position.Y.Offset}
-			elseif posName == "overlay" then config.overlayPosition = {x = obj.Position.X.Offset, y = obj.Position.Y.Offset}
 			else config.positions[posName] = {x = obj.Position.X.Offset, y = obj.Position.Y.Offset} end
 			saveConfig()
 		end)
 	end)
 end
 
--- ============ OVERLAY SYSTEM ============
 local buildColorPickerRow
-
-local TextOverlay = {
-	Frame = nil,
-	HeaderLabel = nil,
-	ListLabel = nil,
-	Gradient = nil,
-	IsEnabled = false,
-	UpdateConn = nil,
-	RgbConn = nil,
-	RgbOffset = 0
-}
-
-local OVERLAY_FONT_MAP = {
-	Gotham = Enum.Font.Gotham, GothamBold = Enum.Font.GothamBold,
-	SourceSans = Enum.Font.SourceSans, SourceSansBold = Enum.Font.SourceSansBold,
-	Arial = Enum.Font.Arial, ArialBold = Enum.Font.ArialBold,
-	Cartoon = Enum.Font.Cartoon, Code = Enum.Font.Code,
-	SciFi = Enum.Font.SciFi, Fantasy = Enum.Font.Fantasy,
-	BuilderSans = Enum.Font.BuilderSans, BuilderSansMedium = Enum.Font.BuilderSansMedium,
-	BuilderSansBold = Enum.Font.BuilderSansBold
-}
-
-local buttonData = {}
-local categoryFrames = {}
-local categoryStates = {}
-
-local function buildEnabledModsList()
-	local lines = {}
-	for cat, feats in pairs(buttonData) do
-		for name, d in pairs(feats) do
-			if d.isToggle and d.getState and d.getState() then
-				table.insert(lines, name)
-			end
-		end
-	end
-	table.sort(lines, function(a, b) return a < b end)
-	return lines
-end
-
-local function getOverlayFont()
-	local sel = getSetting("noxvape", "overlay", "font", "GothamBold")
-	return OVERLAY_FONT_MAP[sel] or Enum.Font.GothamBold
-end
-local function getOverlayHeaderFont()
-	local sel = getSetting("noxvape", "overlay", "headerFont", "GothamBold")
-	return OVERLAY_FONT_MAP[sel] or Enum.Font.GothamBold
-end
-local function getOverlayFontSize()
-	return tonumber(getSetting("noxvape", "overlay", "fontSize", 16)) or 16
-end
-local function getOverlayHeaderSize()
-	return tonumber(getSetting("noxvape", "overlay", "headerSize", 18)) or 18
-end
-local function getOverlayTextColor()
-	local c = getSetting("noxvape", "overlay", "textColor", DEFAULT_TEXT_COLOR)
-	return typeof(c) == "Color3" and c or DEFAULT_TEXT_COLOR
-end
-local function getOverlayHeaderColor()
-	local c = getSetting("noxvape", "overlay", "headerColor", DEFAULT_MENU_COLOR)
-	return typeof(c) == "Color3" and c or DEFAULT_MENU_COLOR
-end
-local function getOverlayBgColor()
-	local c = getSetting("noxvape", "overlay", "bgColor", Color3.fromRGB(10, 12, 16))
-	return typeof(c) == "Color3" and c or Color3.fromRGB(10, 12, 16)
-end
-local function getOverlayTransparency()
-	return tonumber(getSetting("noxvape", "overlay", "bgTransparency", 0.3)) or 0.3
-end
-local function getOverlayGradientEnabled()
-	return getSetting("noxvape", "overlay", "gradient", false) == true
-end
-local function getOverlayAlign()
-	return tostring(getSetting("noxvape", "overlay", "align", "Left"))
-end
-local function getOverlayHeaderText()
-	return tostring(getSetting("noxvape", "overlay", "headerText", "Noxvape"))
-end
-local function getOverlayShowHeader()
-	return getSetting("noxvape", "overlay", "showHeader", true) == true
-end
-
-local function applyAlignmentToFrame()
-	if not TextOverlay.Frame then return end
-	local align = getOverlayAlign()
-	local anchorX = 0.5
-	local posX = 0.5
-	if align == "Left" then anchorX = 0; posX = 0
-	elseif align == "Right" then anchorX = 1; posX = 1 end
-	TextOverlay.Frame.AnchorPoint = Vector2.new(anchorX, 0)
-	local xOff = 0
-	if align == "Left" then xOff = 0
-	elseif align == "Right" then xOff = 0
-	end
-	TextOverlay.Frame.Position = UDim2.new(posX, xOff + (align == "Left" and 0 or (align == "Right" and 0 or 0)), 0, config.overlayPosition.y or 200)
-	TextOverlay.Frame.Position = UDim2.new(posX, (config.overlayPosition.x or 400) - (align == "Left" and 400 or align == "Right" and 400 or 400) + 400 * posX, 0, config.overlayPosition.y or 200)
-end
-
-local function refreshOverlayText()
-	if not TextOverlay.ListLabel then return end
-	local lines = buildEnabledModsList()
-	if #lines == 0 then
-		TextOverlay.ListLabel.Text = "(none enabled)"
-		TextOverlay.ListLabel.TextColor3 = Colors.MutedText
-	else
-		TextOverlay.ListLabel.Text = table.concat(lines, "\n")
-		TextOverlay.ListLabel.TextColor3 = getOverlayTextColor()
-	end
-	if TextOverlay.HeaderLabel then
-		TextOverlay.HeaderLabel.Text = getOverlayHeaderText()
-		TextOverlay.HeaderLabel.TextColor3 = getOverlayHeaderColor()
-		TextOverlay.HeaderLabel.Font = getOverlayHeaderFont()
-		TextOverlay.HeaderLabel.TextSize = getOverlayHeaderSize()
-		TextOverlay.HeaderLabel.Visible = getOverlayShowHeader()
-	end
-end
-
-local function refreshOverlayStyle()
-	if not TextOverlay.Frame or not TextOverlay.ListLabel then return end
-	TextOverlay.ListLabel.Font = getOverlayFont()
-	TextOverlay.ListLabel.TextSize = getOverlayFontSize()
-	TextOverlay.Frame.BackgroundColor3 = getOverlayBgColor()
-	TextOverlay.Frame.BackgroundTransparency = getOverlayTransparency()
-	if TextOverlay.Gradient then
-		TextOverlay.Gradient.Enabled = getOverlayGradientEnabled()
-	end
-end
-
-local function createTextOverlay()
-	if TextOverlay.Frame then return end
-	local frame = Instance.new("Frame")
-	frame.Name = "TextOverlay"
-	frame.BackgroundColor3 = getOverlayBgColor()
-	frame.BackgroundTransparency = getOverlayTransparency()
-	frame.BorderSizePixel = 0
-	frame.Size = UDim2.fromOffset(160, 80)
-	frame.AutomaticSize = Enum.AutomaticSize.XY
-	frame.AnchorPoint = Vector2.new(0, 0)
-	frame.Position = UDim2.fromOffset(config.overlayPosition.x or 400, config.overlayPosition.y or 200)
-	frame.Visible = true
-	frame.ZIndex = 80000
-	frame.Parent = screenGui
-	TextOverlay.Frame = frame
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = frame
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Colors.Accent
-	stroke.Thickness = 1
-	stroke.Transparency = 0.4
-	stroke.Parent = frame
-
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 6); padding.PaddingBottom = UDim.new(0, 6)
-	padding.PaddingLeft = UDim.new(0, 10); padding.PaddingRight = UDim.new(0, 10)
-	padding.Parent = frame
-
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Vertical
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 3)
-	layout.Parent = frame
-
-	local header = Instance.new("TextLabel")
-	header.Name = "Header"
-	header.LayoutOrder = 1
-	header.BackgroundTransparency = 1
-	header.Size = UDim2.fromOffset(140, 20)
-	header.AutomaticSize = Enum.AutomaticSize.XY
-	header.Font = getOverlayHeaderFont()
-	header.TextSize = getOverlayHeaderSize()
-	header.TextColor3 = getOverlayHeaderColor()
-	header.TextXAlignment = Enum.TextXAlignment.Left
-	header.TextYAlignment = Enum.TextYAlignment.Top
-	header.Text = getOverlayHeaderText()
-	header.ZIndex = 80001
-	header.Parent = frame
-	TextOverlay.HeaderLabel = header
-
-	local listLabel = Instance.new("TextLabel")
-	listLabel.Name = "List"
-	listLabel.LayoutOrder = 2
-	listLabel.BackgroundTransparency = 1
-	listLabel.Size = UDim2.fromOffset(140, 30)
-	listLabel.AutomaticSize = Enum.AutomaticSize.XY
-	listLabel.Font = getOverlayFont()
-	listLabel.TextSize = getOverlayFontSize()
-	listLabel.TextColor3 = getOverlayTextColor()
-	listLabel.TextXAlignment = Enum.TextXAlignment.Left
-	listLabel.TextYAlignment = Enum.TextYAlignment.Top
-	listLabel.Text = "(none enabled)"
-	listLabel.ZIndex = 80001
-	listLabel.Parent = frame
-	TextOverlay.ListLabel = listLabel
-
-	local grad = Instance.new("UIGradient")
-	grad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)),
-		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 100)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 255, 100)),
-		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(100, 200, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255))
-	})
-	grad.Rotation = 0
-	grad.Enabled = getOverlayGradientEnabled()
-	grad.Parent = listLabel
-	TextOverlay.Gradient = grad
-
-	makeDraggable(frame, frame, "overlay", false, true)
-	refreshOverlayText()
-	refreshOverlayStyle()
-	applyAlignmentToFrame()
-end
-
-local function destroyTextOverlay()
-	if TextOverlay.UpdateConn then TextOverlay.UpdateConn:Disconnect(); TextOverlay.UpdateConn = nil end
-	if TextOverlay.RgbConn then TextOverlay.RgbConn:Disconnect(); TextOverlay.RgbConn = nil end
-	if TextOverlay.Frame then TextOverlay.Frame:Destroy(); TextOverlay.Frame = nil end
-	TextOverlay.HeaderLabel = nil
-	TextOverlay.ListLabel = nil
-	TextOverlay.Gradient = nil
-	TextOverlay.IsEnabled = false
-end
-
-local function startTextOverlay()
-	createTextOverlay()
-	TextOverlay.IsEnabled = true
-	if TextOverlay.UpdateConn then TextOverlay.UpdateConn:Disconnect() end
-	TextOverlay.UpdateConn = RunService.Heartbeat:Connect(function()
-		if not TextOverlay.IsEnabled then return end
-		refreshOverlayText()
-		refreshOverlayStyle()
-		applyAlignmentToFrame()
-		if TextOverlay.Frame then TextOverlay.Frame.Visible = true end
-	end)
-	if TextOverlay.RgbConn then TextOverlay.RgbConn:Disconnect() end
-	TextOverlay.RgbConn = RunService.Heartbeat:Connect(function()
-		if not TextOverlay.IsEnabled or not getOverlayGradientEnabled() then return end
-		if TextOverlay.Gradient then
-			TextOverlay.RgbOffset = (TextOverlay.RgbOffset + 0.005) % 1
-			TextOverlay.Gradient.Offset = Vector2.new(TextOverlay.RgbOffset, 0)
-		end
-	end)
-end
-
-local function stopTextOverlay()
-	destroyTextOverlay()
-end
 
 -- ============ FEATURES API ============
 local Features = {}
@@ -907,7 +639,7 @@ end
 local dimFrame = Instance.new("Frame")
 dimFrame.Name = "BackgroundDim"
 dimFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-dimFrame.BackgroundTransparency = 0.55
+dimFrame.BackgroundTransparency = 0.7
 dimFrame.BorderSizePixel = 0
 dimFrame.Size = UDim2.fromScale(1, 1)
 dimFrame.ZIndex = 10000
@@ -916,7 +648,7 @@ dimFrame.Active = true
 dimFrame.Parent = screenGui
 local blurEffect = Instance.new("BlurEffect")
 blurEffect.Name = "NoxBlur"
-blurEffect.Size = 18
+blurEffect.Size = 10
 blurEffect.Enabled = false
 blurEffect.Parent = Lighting
 
@@ -1841,7 +1573,7 @@ local function createSettingsWindow()
 		config.customCursor = v
 		updateCursorVisibility()
 		saveConfig()
-	end, 10, "Use custom Linux cursor")
+	end, 10, "Use custom cursor image")
 	addLabel("Menu Color", 11)
 	local curMenuColor = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
 	buildColorPickerRow(content, 12, curMenuColor, function(c) applyMenuColorToGui(c) end, "Accent Color")
@@ -1856,44 +1588,13 @@ local function createSettingsWindow()
 		applyTextColorToGui(DEFAULT_TEXT_COLOR)
 		notifySuccess("Text color reset")
 	end, 16, false)
-	addLabel("Overlays", 17)
-	addCheck("Text GUI", function()
-		return TextOverlay.IsEnabled == true
-	end, function(v)
-		if v then startTextOverlay() else stopTextOverlay() end
-		saveConfig()
-	end, 18, "Show draggable overlay with enabled mods")
-	addTextRow("Header Text", function()
-		return getOverlayHeaderText()
-	end, function(v)
-		setSetting("noxvape", "overlay", "headerText", v)
-		refreshOverlayText()
-	end, 19, "Noxvape")
-	addCheck("Show Header", function()
-		return getOverlayShowHeader()
-	end, function(v)
-		setSetting("noxvape", "overlay", "showHeader", v)
-		refreshOverlayText()
-	end, 20, "Show header text above list")
-	addDropdown("Align", function()
-		return getOverlayAlign()
-	end, function(v)
-		setSetting("noxvape", "overlay", "align", v)
-		applyAlignmentToFrame()
-	end, {"Left", "Center", "Right"}, 21)
-	addDropdown("Font", function()
-		return getSetting("noxvape", "overlay", "font", "GothamBold")
-	end, function(v)
-		setSetting("noxvape", "overlay", "font", v)
-		refreshOverlayStyle()
-	end, {"Gotham","GothamBold","SourceSans","SourceSansBold","Arial","ArialBold","Cartoon","Code","SciFi","Fantasy","BuilderSans","BuilderSansMedium","BuilderSansBold"}, 22)
-	addLabel("Managers", 23)
-	addBtn("Fast Flag Manager", function() createFastFlagWindow() end, 24, false)
-	addBtn("Profiles", function() createProfilesWindow() end, 25, false)
-	addLabel("Other", 26)
+	addLabel("Managers", 17)
+	addBtn("Fast Flag Manager", function() createFastFlagWindow() end, 18, false)
+	addBtn("Profiles", function() createProfilesWindow() end, 19, false)
+	addLabel("Other", 20)
 	local sf = Instance.new("Frame")
 	sf.BackgroundTransparency = 1; sf.Size = UDim2.new(1,0,0,42)
-	sf.LayoutOrder = 27; sf.Parent = content
+	sf.LayoutOrder = 21; sf.Parent = content
 	local sd = Instance.new("TextButton")
 	sd.AutoButtonColor = false; sd.BackgroundColor3 = Colors.Action
 	sd.BorderSizePixel = 0; sd.Size = UDim2.new(1,0,1,0)
@@ -1918,9 +1619,9 @@ local function init()
 		local sx, sy = getPosition(catName, 240 + ((ci - 1) * 218), 75)
 		local card = Instance.new("Frame")
 		card.Name = catName; card.BackgroundColor3 = Colors.Panel
+		card.BackgroundTransparency = 0.1 -- Lighter theme
 		card.BorderSizePixel = 0; card.Size = UDim2.fromOffset(210, 560)
 		card.Position = UDim2.fromOffset(sx, sy)
-		-- TABS: default VISIBLE unless config explicitly says false
 		card.Visible = config.tabs[catName] ~= false
 		card.ClipsDescendants = true; card.ZIndex = 11000 + ci; card.Parent = root
 		categoryFrames[catName] = card
@@ -1928,6 +1629,7 @@ local function init()
 		local hdr = Instance.new("TextButton")
 		hdr.Name = "Header"; hdr.AutoButtonColor = false
 		hdr.BackgroundColor3 = Colors.Panel; hdr.BorderSizePixel = 0
+		hdr.BackgroundTransparency = 0.1
 		hdr.Size = UDim2.new(1,0,0,46); hdr.Text = ""
 		hdr.ZIndex = 11020 + ci; hdr.Parent = card
 		local cl2 = Instance.new("TextLabel")
@@ -2227,12 +1929,14 @@ local function init()
 	local ny = tonumber(config.noxPosition.y) or 75
 	tabPanel = Instance.new("Frame")
 	tabPanel.Name = "noxvape"; tabPanel.BackgroundColor3 = Colors.Panel
+	tabPanel.BackgroundTransparency = 0.1
 	tabPanel.BorderSizePixel = 0; tabPanel.Size = UDim2.fromOffset(210,560)
 	tabPanel.Position = UDim2.fromOffset(nx, ny)
 	tabPanel.ClipsDescendants = true; tabPanel.Parent = screenGui
 	local th = Instance.new("TextButton")
 	th.Name = "Header"; th.AutoButtonColor = false
 	th.BackgroundColor3 = Colors.Panel; th.BorderSizePixel = 0
+	th.BackgroundTransparency = 0.1
 	th.Size = UDim2.new(1,0,0,46); th.Text = ""; th.Parent = tabPanel
 	local logo = Instance.new("ImageLabel")
 	logo.BackgroundTransparency = 1; logo.AnchorPoint = Vector2.new(0.5,0.5)
@@ -2266,7 +1970,9 @@ local function init()
 		local cn = catDef.name
 		local tb = Instance.new("TextButton")
 		tb.Name = cn; tb.LayoutOrder = i; tb.AutoButtonColor = false
-		tb.BackgroundColor3 = Colors.Action; tb.BorderSizePixel = 0
+		-- Highlight active tab
+		tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action
+		tb.BorderSizePixel = 0
 		tb.Size = UDim2.new(1,0,0,36); tb.FontFace = UIFont
 		tb.TextSize = 17; tb.TextColor3 = Colors.Text; tb.Text = cn
 		tb.TextXAlignment = Enum.TextXAlignment.Center; tb.Parent = ts
@@ -2276,6 +1982,7 @@ local function init()
 			if not c or not c.Parent then return end
 			categoryStates[cn] = not categoryStates[cn]
 			c.Visible = categoryStates[cn]
+			tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action -- Update tab color
 			config.tabs[cn] = categoryStates[cn]
 			saveConfig()
 		end)
@@ -2313,11 +2020,13 @@ local function init()
 	sb.MouseButton1Click:Connect(function() playButtonSound() createSettingsWindow() end)
 	local sxf = Instance.new("Frame")
 	sxf.Name = "SearchBar"; sxf.BackgroundColor3 = Colors.Panel
+	sxf.BackgroundTransparency = 0.1
 	sxf.BorderSizePixel = 0; sxf.Size = UDim2.fromOffset(220,40)
 	sxf.Position = UDim2.fromOffset(tonumber(config.searchPosition.x) or 300, tonumber(config.searchPosition.y) or 50)
 	sxf.Parent = screenGui
 	local sh = Instance.new("TextButton")
 	sh.AutoButtonColor = false; sh.BackgroundColor3 = Colors.Panel
+	sh.BackgroundTransparency = 0.1
 	sh.BorderSizePixel = 0; sh.Size = UDim2.new(1,0,0,40)
 	sh.Text = ""; sh.Parent = sxf
 	makeDraggable(sxf, sh, "searchBar", false)
@@ -2407,11 +2116,6 @@ local function init()
 		end
 	end)
 
-	if config.settings["noxvape"] and config.settings["noxvape"]["overlay"]
-		and config.settings["noxvape"]["overlay"]["enabled"] == true then
-		startTextOverlay()
-	end
-
 	setMenuVisible(tabPanel.Visible)
 	saveConfig()
 end
@@ -2454,8 +2158,6 @@ NoxLib.setSetting = setSetting
 NoxLib.saveConfig = saveConfig
 NoxLib.setMenuVisible = setMenuVisible
 NoxLib.Colors = Colors
-NoxLib.startTextOverlay = startTextOverlay
-NoxLib.stopTextOverlay = stopTextOverlay
 
 function NoxLib.init() init() end
 
