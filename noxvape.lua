@@ -1,7 +1,7 @@
 --[[
-    NoxLib v1.1  —  noxvape GUI Framework
-    - Synchronized RGB color picker (all pickers cycle together)
-    - Fast Flag Manager (loads JSONs from a workspace "loader" folder)
+    NoxLib v1.2  —  noxvape GUI Framework
+    - Synchronized RGB color picker
+    - Fast Flag Manager (auto-creates noxvape_fastflags in workspace)
     - Profiles system (save/load/rename/delete + Sync to Menu Color)
 ]]
 
@@ -20,16 +20,15 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- Constants
 local CONFIG_FILE = "noxvape.json"
 local PROFILES_FOLDER = "noxvape_profiles"
+local FFLAGS_FOLDER_NAME = "noxvape_fastflags"
 local LOGO_FILE = "noxvapev4.png"
 local LOGO_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/noxvapev4.png"
 local SEARCH_ICON_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/icons8-search-24.png"
 local POGCHAMP_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/pogchamp-removebg-preview.png"
 local SETTINGS_ICON_URL = "https://github.com/Gorillatagmodder123456/a/raw/main/ChatGPT%20Image%20Aug%2026%2C%202026%2C%2007_00_05%20AM.png"
 
--- RGB speed: hue cycles 0→1 in (1 / RGB_SPEED) seconds. Higher = faster.
 local RGB_SPEED = 0.75
 
--- Colors
 local Colors = {
     Background = Color3.fromRGB(1, 1, 2),
     Panel = Color3.fromRGB(4, 5, 7),
@@ -112,7 +111,26 @@ local function safeCall(fn, ...)
     return true, result
 end
 
+-- =========================================================================
+-- Fast Flag Folder (auto-created in workspace)
+-- =========================================================================
+local function ensureFastFlagsFolder()
+    local folder = workspace:FindFirstChild(FFLAGS_FOLDER_NAME)
+    if not folder then
+        local ok, newFolder = pcall(function()
+            local f = Instance.new("Folder")
+            f.Name = FFLAGS_FOLDER_NAME
+            f.Parent = workspace
+            return f
+        end)
+        if ok then folder = newFolder end
+    end
+    return folder
+end
+
+-- =========================================================================
 -- Config
+-- =========================================================================
 local config = {
     version = 1,
     features = {},
@@ -401,7 +419,7 @@ local function notifyEnabled(message) createNotification(message, "enabled") end
 local function notifyWarning(message) createNotification(message, "warning") end
 local function notifyError(message) createNotification(message, "error") end
 
--- Tooltip
+-- Tooltip (FIXED: no GuiInset offset)
 local tooltip = nil
 local tooltipToken = 0
 
@@ -418,7 +436,7 @@ local function showTooltip(text)
         if token ~= tooltipToken then return end
         local camera = workspace.CurrentCamera
         if not camera then return end
-        local mouse = UserInputService:GetMouseLocation() + GuiService:GetGuiInset()
+        local mouse = UserInputService:GetMouseLocation()
         local frame = Instance.new("Frame")
         frame.Name = "Tooltip"
         frame.BackgroundColor3 = Colors.Tooltip
@@ -563,7 +581,6 @@ end
 function Features.disable(cat, name) return Features.forceOff(cat, name) end
 function Features.enable(cat, name) return Features.set(cat, name, true) end
 
--- Category registry
 local _categories = {}
 local _categoryMap = {}
 
@@ -622,7 +639,6 @@ local function updateBlur()
     dimFrame.Visible = tabPanel.Visible
 end
 
--- Other GUI management
 local disabledGuiStates = {}
 local otherGuisDisabled = false
 
@@ -671,13 +687,20 @@ end
 -- FAST FLAG MANAGER
 -- =========================================================================
 local function findLoaderFolder()
-    -- Search workspace for a folder whose name hints at fast flags / loader
+    -- Priority 1: the auto-created noxvape_fastflags folder
+    local preferred = workspace:FindFirstChild(FFLAGS_FOLDER_NAME)
+    if preferred and (preferred:IsA("Folder") or preferred:IsA("Configuration")) then
+        return preferred
+    end
+
+    -- Fallback: look for common alternate folder names
     local candidates = {"loader", "Loader", "FastFlags", "fastflags", "fflags", "FFlags", "Flags", "flags"}
     for _, name in ipairs(candidates) do
         local f = workspace:FindFirstChild(name)
         if f and (f:IsA("Folder") or f:IsA("Configuration")) then return f end
     end
-    -- Fall back to any Folder that contains a child named like *.json
+
+    -- Last resort: any folder with a *.json StringValue
     for _, f in ipairs(workspace:GetChildren()) do
         if f:IsA("Folder") then
             for _, ch in ipairs(f:GetChildren()) do
@@ -822,7 +845,7 @@ local function deleteProfile(name)
 end
 
 -- =========================================================================
--- Init
+-- Init state
 -- =========================================================================
 local waitingForBind = nil
 local settingsWindow = nil
@@ -830,7 +853,6 @@ local settingsVisible = false
 local fastFlagWindow = nil
 local profilesWindow = nil
 local filterButtons
-local refreshSettingsWindow
 
 local function setMenuVisible(visible)
     if not tabPanel then return end
@@ -922,7 +944,7 @@ local function createFastFlagWindow()
     hint.TextColor3 = Colors.MutedText
     hint.TextXAlignment = Enum.TextXAlignment.Left
     hint.TextTruncate = Enum.TextTruncate.AtEnd
-    hint.Text = "Place a 'loader' Folder in workspace with StringValue JSONs."
+    hint.Text = "JSON files go in workspace → " .. FFLAGS_FOLDER_NAME
     hint.ZIndex = 45003
     hint.Parent = window
 
@@ -964,7 +986,7 @@ local function createFastFlagWindow()
             empty.FontFace = UIFont
             empty.TextSize = 15
             empty.TextColor3 = Colors.MutedText
-            empty.Text = "No 'loader' folder found in workspace."
+            empty.Text = "No '" .. FFLAGS_FOLDER_NAME .. "' folder found in workspace."
             empty.LayoutOrder = 1
             empty.Parent = content
             return
@@ -995,10 +1017,6 @@ local function createFastFlagWindow()
             row.ZIndex = 45004
             row.Parent = content
 
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, 4)
-            corner.Parent = row
-
             local check = Instance.new("TextButton")
             check.AutoButtonColor = false
             check.BackgroundColor3 = Colors.Action
@@ -1008,10 +1026,6 @@ local function createFastFlagWindow()
             check.Text = ""
             check.ZIndex = 45005
             check.Parent = row
-
-            local checkCorner = Instance.new("UICorner")
-            checkCorner.CornerRadius = UDim.new(0, 4)
-            checkCorner.Parent = check
 
             local flagCount = 0
             for _ in pairs(entry.flags) do flagCount += 1 end
@@ -1042,9 +1056,6 @@ local function createFastFlagWindow()
             loadBtn.Text = "Load"
             loadBtn.ZIndex = 45005
             loadBtn.Parent = row
-            local loadCorner = Instance.new("UICorner")
-            loadCorner.CornerRadius = UDim.new(0, 4)
-            loadCorner.Parent = loadBtn
 
             local function updateCheck()
                 if selectedFlags[entry.name] then
@@ -1086,7 +1097,6 @@ local function createFastFlagWindow()
     loadAllBtn.Text = "Load Selected"
     loadAllBtn.ZIndex = 45006
     loadAllBtn.Parent = window
-    local lc1 = Instance.new("UICorner"); lc1.CornerRadius = UDim.new(0, 6); lc1.Parent = loadAllBtn
 
     refreshBtn = Instance.new("TextButton")
     refreshBtn.AutoButtonColor = false
@@ -1101,7 +1111,6 @@ local function createFastFlagWindow()
     refreshBtn.Text = "Refresh"
     refreshBtn.ZIndex = 45006
     refreshBtn.Parent = window
-    local lc2 = Instance.new("UICorner"); lc2.CornerRadius = UDim.new(0, 6); lc2.Parent = refreshBtn
 
     refreshBtn.MouseButton1Click:Connect(function()
         playButtonSound()
@@ -1181,7 +1190,6 @@ local function createProfilesWindow()
 
     makeDraggable(window, header, "profilesWindow", false)
 
-    -- New profile row (name input + save button)
     local newRow = Instance.new("Frame")
     newRow.BackgroundTransparency = 1
     newRow.Position = UDim2.fromOffset(12, 48)
@@ -1202,7 +1210,6 @@ local function createProfilesWindow()
     nameInput.ClearTextOnFocus = false
     nameInput.ZIndex = 46004
     nameInput.Parent = newRow
-    local nc = Instance.new("UICorner"); nc.CornerRadius = UDim.new(0, 4); nc.Parent = nameInput
 
     local saveBtn = Instance.new("TextButton")
     saveBtn.AutoButtonColor = false
@@ -1217,7 +1224,6 @@ local function createProfilesWindow()
     saveBtn.Text = "Save"
     saveBtn.ZIndex = 46004
     saveBtn.Parent = newRow
-    local sc = Instance.new("UICorner"); sc.CornerRadius = UDim.new(0, 4); sc.Parent = saveBtn
 
     local profileList = Instance.new("ScrollingFrame")
     profileList.Name = "Profiles"
@@ -1250,7 +1256,6 @@ local function createProfilesWindow()
         row.LayoutOrder = index
         row.ZIndex = 46004
         row.Parent = profileList
-        local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(0, 4); rc.Parent = row
 
         local nameLbl = Instance.new("TextLabel")
         nameLbl.Name = "NameLabel"
@@ -1266,7 +1271,6 @@ local function createProfilesWindow()
         nameLbl.ZIndex = 46005
         nameLbl.Parent = row
 
-        -- Buttons: Load, Rename, Sync, Delete
         local btnY = 32
         local btnH = 26
 
@@ -1282,7 +1286,6 @@ local function createProfilesWindow()
         loadBtn.Text = "Load"
         loadBtn.ZIndex = 46005
         loadBtn.Parent = row
-        local lc = Instance.new("UICorner"); lc.CornerRadius = UDim.new(0, 4); lc.Parent = loadBtn
 
         local renameBtn = Instance.new("TextButton")
         renameBtn.AutoButtonColor = false
@@ -1296,7 +1299,6 @@ local function createProfilesWindow()
         renameBtn.Text = "Rename"
         renameBtn.ZIndex = 46005
         renameBtn.Parent = row
-        local rc2 = Instance.new("UICorner"); rc2.CornerRadius = UDim.new(0, 4); rc2.Parent = renameBtn
 
         local syncBtn = Instance.new("TextButton")
         syncBtn.AutoButtonColor = false
@@ -1310,7 +1312,6 @@ local function createProfilesWindow()
         syncBtn.Text = "Sync to Menu Color"
         syncBtn.ZIndex = 46005
         syncBtn.Parent = row
-        local sc2 = Instance.new("UICorner"); sc2.CornerRadius = UDim.new(0, 4); sc2.Parent = syncBtn
 
         local delBtn = Instance.new("TextButton")
         delBtn.AutoButtonColor = false
@@ -1325,7 +1326,6 @@ local function createProfilesWindow()
         delBtn.Text = "Del"
         delBtn.ZIndex = 46005
         delBtn.Parent = row
-        local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(0, 4); dc.Parent = delBtn
 
         loadBtn.MouseButton1Click:Connect(function()
             playButtonSound()
@@ -1351,11 +1351,9 @@ local function createProfilesWindow()
             end
         end)
 
-        -- Editable name via double-click behavior: click on name to edit
         nameLbl.TextEditable = false
         nameLbl.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                -- Toggle edit mode on click
                 local box = Instance.new("TextBox")
                 box.BackgroundColor3 = Colors.ToggleOff
                 box.BorderSizePixel = 0
@@ -1673,14 +1671,14 @@ local function createSettingsWindow()
         sliderBg.InputBegan:Connect(function(input)
             if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
             dragging = true
-            local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset()
+            local mousePos = UserInputService:GetMouseLocation()
             local position = mousePos.X - sliderBg.AbsolutePosition.X
             update(math.clamp(position / sliderBg.AbsoluteSize.X, 0, 1))
         end)
         UserInputService.InputChanged:Connect(function(input)
             if not dragging or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
             if not sliderBg.Parent then return end
-            local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset()
+            local mousePos = UserInputService:GetMouseLocation()
             local position = mousePos.X - sliderBg.AbsolutePosition.X
             update(math.clamp(position / sliderBg.AbsoluteSize.X, 0, 1))
         end)
@@ -1701,7 +1699,6 @@ local function createSettingsWindow()
         btn.Text = labelText
         btn.LayoutOrder = order
         btn.Parent = content
-        local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 6); c.Parent = btn
         btn.MouseEnter:Connect(function()
             btn.BackgroundColor3 = isPrimary and Colors.ToggleOnHover or Colors.ActionHover
         end)
@@ -1755,7 +1752,6 @@ local function createSettingsWindow()
     sd.TextColor3 = Colors.Text
     sd.Text = "Self Destruct"
     sd.Parent = sdFrame
-    local sdc = Instance.new("UICorner"); sdc.CornerRadius = UDim.new(0, 6); sdc.Parent = sd
     sd.MouseEnter:Connect(function() tw(sd, { BackgroundColor3 = Colors.ActionHover }, 0.08) end)
     sd.MouseLeave:Connect(function() tw(sd, { BackgroundColor3 = Colors.Action }, 0.08) end)
     sd.MouseButton1Click:Connect(function() playButtonSound(); selfDestruct() end)
@@ -1765,12 +1761,13 @@ local function createSettingsWindow()
     settingsVisible = true
 end
 
-refreshSettingsWindow = createSettingsWindow
-
 -- =========================================================================
--- INIT
+-- MAIN INIT
 -- =========================================================================
 local function init()
+    -- Auto-create noxvape_fastflags folder in workspace
+    ensureFastFlagsFolder()
+
     local root = Instance.new("Frame")
     root.Name = "Root"
     root.BackgroundTransparency = 1
@@ -1960,7 +1957,6 @@ local function init()
                 settingsFrame.Visible = not settingsFrame.Visible
             end)
 
-            -- Keybind row
             local keybindRow = Instance.new("Frame")
             keybindRow.BackgroundTransparency = 1
             keybindRow.Size = UDim2.new(1, 0, 0, 32)
@@ -2008,7 +2004,6 @@ local function init()
                 keybindButton.BackgroundColor3 = Colors.Accent
             end)
 
-            -- Settings entries
             if type(extraSettings) == "table" then
                 for settingIndex, setting in ipairs(extraSettings) do
                     if type(setting) ~= "table" then continue end
@@ -2017,7 +2012,6 @@ local function init()
                     local settingKey = tostring(setting.key or setting.name or ("setting" .. settingIndex))
                     local order = 10 + settingIndex
 
-                    -- SLIDER
                     if settingType == "slider" then
                         local min = tonumber(setting.min) or 0
                         local max = tonumber(setting.max) or 100
@@ -2109,7 +2103,7 @@ local function init()
                             dragging = true
                             local width = sliderBg.AbsoluteSize.X
                             if width > 0 then
-                                local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset()
+                                local mousePos = UserInputService:GetMouseLocation()
                                 local position = mousePos.X - sliderBg.AbsolutePosition.X
                                 updateSlider(min + math.clamp(position / width, 0, 1) * range)
                             end
@@ -2123,7 +2117,7 @@ local function init()
                             end
                             local width = sliderBg.AbsoluteSize.X
                             if width <= 0 then return end
-                            local mousePos = UserInputService:GetMouseLocation() + GuiService:GetGuiInset()
+                            local mousePos = UserInputService:GetMouseLocation()
                             local position = mousePos.X - sliderBg.AbsolutePosition.X
                             updateSlider(min + math.clamp(position / width, 0, 1) * range)
                         end)
@@ -2131,7 +2125,6 @@ local function init()
                             if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
                         end)
 
-                    -- COLORPICKER
                     elseif settingType == "colorpicker" then
                         local default = typeof(setting.default) == "Color3" and setting.default or Color3.fromRGB(255, 255, 255)
                         local current = getSetting(categoryName, itemName, settingKey, default)
@@ -2286,7 +2279,7 @@ local function init()
                         local darknessDragging = false
 
                         local function updateWheelFromMouse()
-                            local mouse = UserInputService:GetMouseLocation() + GuiService:GetGuiInset()
+                            local mouse = UserInputService:GetMouseLocation()
                             local center = wheel.AbsolutePosition + (wheel.AbsoluteSize / 2)
                             local offset = mouse - center
                             local radius = math.min(wheel.AbsoluteSize.X, wheel.AbsoluteSize.Y) / 2
@@ -2308,7 +2301,7 @@ local function init()
                         end
 
                         local function updateDarknessFromMouse()
-                            local mouseY = UserInputService:GetMouseLocation().Y + GuiService:GetGuiInset().Y
+                            local mouseY = UserInputService:GetMouseLocation().Y
                             local top = darkness.AbsolutePosition.Y
                             local height = darkness.AbsoluteSize.Y
                             local position = math.clamp(mouseY - top, 0, height)
@@ -2372,7 +2365,7 @@ local function init()
                         updateDarknessSlider()
                         updateGradient()
 
-                        -- =========== SYNCHRONIZED RGB BUTTON ===========
+                        -- SYNCHRONIZED RGB BUTTON
                         local rgbBtn = Instance.new("TextButton")
                         rgbBtn.Name = "RGBButton"
                         rgbBtn.AutoButtonColor = false
@@ -2405,7 +2398,6 @@ local function init()
                                         if rgbConnection then rgbConnection:Disconnect(); rgbConnection = nil end
                                         return
                                     end
-                                    -- Global time-based hue → all RGB pickers stay in sync
                                     hue = (tick() * RGB_SPEED) % 1
                                     updateWheelPicker()
                                     updateGradient()
@@ -2426,7 +2418,6 @@ local function init()
                         end)
                         addTooltip(rgbBtn, "Synchronized RGB cycling")
 
-                    -- DROPDOWN
                     elseif settingType == "dropdown" then
                         local options = type(setting.options) == "table" and setting.options or {}
                         local default = setting.default
@@ -2522,7 +2513,6 @@ local function init()
                             dropdown.BackgroundColor3 = dropdownContainer.Visible and Colors.ActionHover or Colors.Action
                         end)
 
-                    -- CHECKBOX
                     elseif settingType == "checkbox" then
                         local default = setting.default == true
                         local current = getSetting(categoryName, itemName, settingKey, default) == true
@@ -2570,7 +2560,6 @@ local function init()
                             safeCall(setting.onChanged or setting.action, current)
                         end)
 
-                    -- TEXTBOX
                     elseif settingType == "textbox" then
                         local frame = Instance.new("Frame")
                         frame.BackgroundTransparency = 1
@@ -2743,7 +2732,6 @@ local function init()
         addTooltip(tabButton, "Toggle " .. categoryName .. " tab")
     end
 
-    -- Settings button
     local settingsContainer = Instance.new("Frame")
     settingsContainer.Name = "SettingsButtonContainer"
     settingsContainer.BackgroundTransparency = 1
