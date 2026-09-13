@@ -14,80 +14,57 @@ local PROFILES_FOLDER = "noxvape_profiles"
 local FFLAGS_FOLDER_NAME = "noxvape_fastflags"
 local LOGO_FILE = "noxvapev4.png"
 local CURSOR_FILE = "nox_cursor.png"
-local POGCHAMP_FILE = "nox_pogchamp.png"
 local LOGO_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/noxvapev4.png"
 local POGCHAMP_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/pogchamp-removebg-preview.png"
 local SETTINGS_ICON_URL = "https://github.com/Gorillatagmodder123456/a/raw/main/ChatGPT%20Image%20Aug%2026%2C%202026%2C%2007_00_05%20AM.png"
 local CURSOR_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/Noxvape/main/noxvape%20item%20assets%20with%20bg/linux%20cursor.png"
-local CURSOR_FALLBACK = "rbxassetid://6031091004"
 local RGB_SPEED = 0.75
 local RGB_EPOCH = tick()
 local DEFAULT_MENU_COLOR = Color3.fromRGB(55, 150, 200)
-local DEFAULT_TEXT_COLOR = Color3.fromRGB(235, 240, 245)
 
--- LIGHTER COLOR THEME
 local Colors = {
-	Panel = Color3.fromRGB(28, 30, 36),
-	PanelHover = Color3.fromRGB(38, 41, 48),
-	ToggleOff = Color3.fromRGB(45, 48, 56),
-	ToggleOffHover = Color3.fromRGB(55, 58, 66),
+	Panel = Color3.fromRGB(4, 5, 7),
+	PanelHover = Color3.fromRGB(9, 11, 15),
+	ToggleOff = Color3.fromRGB(7, 9, 12),
+	ToggleOffHover = Color3.fromRGB(14, 14, 14),
 	ToggleOn = Color3.fromRGB(30, 100, 140),
 	ToggleOnHover = Color3.fromRGB(40, 120, 165),
-	Action = Color3.fromRGB(42, 45, 54),
-	ActionHover = Color3.fromRGB(58, 62, 72),
-	Setting = Color3.fromRGB(36, 38, 46),
+	Action = Color3.fromRGB(10, 12, 16),
+	ActionHover = Color3.fromRGB(20, 20, 22),
+	Setting = Color3.fromRGB(5, 7, 10),
 	Accent = DEFAULT_MENU_COLOR,
 	Warning = Color3.fromRGB(255, 165, 0),
 	Error = Color3.fromRGB(220, 50, 50),
+	Text = Color3.fromRGB(235, 240, 245),
+	TextDim = Color3.fromRGB(180, 190, 200),
+	TextAccent = Color3.fromRGB(140, 200, 235),
+	MutedText = Color3.fromRGB(140, 150, 160),
+	Tooltip = Color3.fromRGB(3, 4, 6),
 	Success = Color3.fromRGB(80, 200, 120),
-	Text = DEFAULT_TEXT_COLOR,
-	MutedText = Color3.fromRGB(170, 180, 190),
-	Tooltip = Color3.fromRGB(18, 20, 24),
 	Info = Color3.fromRGB(100, 180, 255)
 }
 
-local UIFont = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-
-local function safeGetCustomAsset(path)
-	if type(getcustomasset) == "function" then
-		local ok, r = pcall(getcustomasset, path)
-		if ok and r then return r end
-	end
-	if type(getsynasset) == "function" then
-		local ok, r = pcall(getsynasset, path)
-		if ok and r then return r end
-	end
+local function getCustomAsset(p)
+	if type(getcustomasset) == "function" then return getcustomasset(p) end
+	if type(getsynasset) == "function" then return getsynasset(p) end
 	return nil
 end
-
 local function canUseFiles()
 	return type(writefile) == "function" and type(readfile) == "function" and type(isfile) == "function"
 end
-
 local function listfilesSafe(f)
 	if type(listfiles) ~= "function" then return {} end
 	local ok, r = pcall(listfiles, f)
 	if ok and type(r) == "table" then return r end
 	return {}
 end
-
 local function makeFolderSafe(f) if type(makefolder) ~= "function" then return false end return (pcall(makefolder, f)) end
 local function delFileSafe(f) if type(delfile) ~= "function" then return false end return (pcall(delfile, f)) end
 local function isFolderSafe(f) if type(isfolder) ~= "function" then return false end local ok, r = pcall(isfolder, f) return ok and r end
+local function tw(o, p, d) if not o or not o.Parent then return end local t = TweenService:Create(o, TweenInfo.new(d or 0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), p) t:Play() return t end
+local function safeCall(fn, ...) if type(fn) ~= "function" then return true end local ok, r = pcall(fn, ...) if not ok then warn("[NoxLib]", r) return false, r end return true, r end
 
-local function tw(o, p, d)
-	if not o or not o.Parent then return end
-	local t = TweenService:Create(o, TweenInfo.new(d or 0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), p)
-	t:Play()
-	return t
-end
-
-local function safeCall(fn, ...)
-	if type(fn) ~= "function" then return true end
-	local ok, r = pcall(fn, ...)
-	if not ok then warn("[NoxLib]", r) return false, r end
-	return true, r
-end
+local UIFont = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
 
 local function ensureFastFlagsFolder()
 	local ok, ex = pcall(function() return workspace:FindFirstChild(FFLAGS_FOLDER_NAME) end)
@@ -103,10 +80,11 @@ local function ensureFastFlagsFolder()
 end
 
 local config = {
-	version = 5,
+	version = 4,
 	features = {}, tabs = {}, positions = {}, keybinds = {}, settings = {},
 	noxPosition = { x = 18, y = 75 },
 	searchPosition = { x = 300, y = 50 },
+	overlayPosition = { x = 400, y = 200 },
 	guiKeybind = "RightShift",
 	guiSounds = false, soundId = "0",
 	menuSounds = false, openSoundId = "0", closeSoundId = "0",
@@ -138,14 +116,13 @@ local function saveConfig()
 		saveQueued = false
 	end)
 end
-
 loadConfig()
 
 local function repairConfig()
 	for _, k in ipairs({"features","tabs","positions","keybinds","settings"}) do
 		if type(config[k]) ~= "table" then config[k] = {} end
 	end
-	for _, posKey in ipairs({"noxPosition","searchPosition"}) do
+	for _, posKey in ipairs({"noxPosition","searchPosition","overlayPosition"}) do
 		if type(config[posKey]) ~= "table" then config[posKey] = {x=100,y=100} end
 		config[posKey].x = tonumber(config[posKey].x) or 100
 		config[posKey].y = tonumber(config[posKey].y) or 100
@@ -162,7 +139,6 @@ local function repairConfig()
 	if type(config.customCursor) ~= "boolean" then config.customCursor = false end
 	config.settings["noxvape"] = config.settings["noxvape"] or {}
 end
-
 repairConfig()
 
 local function deriveAccentSet(base)
@@ -188,7 +164,6 @@ local function ensureCategoryData(cat)
 	if type(config.keybinds[cat]) ~= "table" then config.keybinds[cat] = {} end
 	if type(config.settings[cat]) ~= "table" then config.settings[cat] = {} end
 end
-
 local function colorToData(v) if typeof(v) ~= "Color3" then return v end return {r=v.R,g=v.G,b=v.B} end
 local function dataToColor(v)
 	if type(v) == "table" and type(v.r) == "number" and type(v.g) == "number" and type(v.b) == "number" then
@@ -196,20 +171,17 @@ local function dataToColor(v)
 	end
 	return v
 end
-
 local function getFeatureState(cat, name)
 	ensureCategoryData(cat)
 	local v = config.features[cat][name]
 	return type(v) == "boolean" and v or false
 end
-
 local function getKeybind(cat, name)
 	ensureCategoryData(cat)
 	local v = config.keybinds[cat][name]
 	if type(v) == "string" and v ~= "" then return v end
 	return nil
 end
-
 local function getSetting(cat, feat, key, default)
 	ensureCategoryData(cat)
 	if type(config.settings[cat][feat]) ~= "table" then config.settings[cat][feat] = {} end
@@ -220,14 +192,12 @@ local function getSetting(cat, feat, key, default)
 	end
 	return dataToColor(v)
 end
-
 local function setSetting(cat, feat, key, value)
 	ensureCategoryData(cat)
 	if type(config.settings[cat][feat]) ~= "table" then config.settings[cat][feat] = {} end
 	config.settings[cat][feat][key] = colorToData(value)
 	saveConfig()
 end
-
 local function getPosition(name, dx, dy)
 	local p = config.positions[name]
 	if type(p) == "table" and type(p.x) == "number" and type(p.y) == "number" then return p.x, p.y end
@@ -247,71 +217,6 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 100000
 screenGui.Parent = playerGui
 
--- ============ CUSTOM CURSOR ============
-local cursorFrame = nil
-local cursorConn = nil
-local cursorLoaded = false
-local cursorAssetPath = nil
-
-local function updateCursorVisibility()
-	if not cursorFrame then return end
-	local menuOpen = tabPanel and tabPanel.Visible == true
-	local shouldShow = config.customCursor and menuOpen and cursorLoaded and cursorAssetPath ~= nil
-	cursorFrame.Visible = shouldShow
-	pcall(function()
-		UserInputService.MouseIconEnabled = not shouldShow
-	end)
-end
-
-local function setupCursor()
-	if not cursorFrame then
-		cursorFrame = Instance.new("ImageLabel")
-		cursorFrame.Name = "NoxCursor"
-		cursorFrame.BackgroundTransparency = 1
-		cursorFrame.Size = UDim2.fromOffset(24, 24)
-		cursorFrame.ZIndex = 999999
-		cursorFrame.Visible = false
-		cursorFrame.ScaleType = Enum.ScaleType.Fit
-		cursorFrame.Parent = screenGui
-	end
-
-	-- Load exactly like notification image does
-	task.spawn(function()
-		if type(isfile) == "function" and isfile(CURSOR_FILE) then
-			local a = safeGetCustomAsset(CURSOR_FILE)
-			if a then cursorAssetPath = a end
-		end
-		if not cursorAssetPath and type(request) == "function" and type(writefile) == "function" then
-			pcall(function()
-				local r = request({Url = CURSOR_URL, Method = "GET"})
-				if r and r.Success and r.Body then
-					writefile(CURSOR_FILE, r.Body)
-					local a = safeGetCustomAsset(CURSOR_FILE)
-					if a then cursorAssetPath = a end
-				end
-			end)
-		end
-		if not cursorAssetPath then
-			cursorAssetPath = CURSOR_FALLBACK
-		end
-		cursorLoaded = true
-		if cursorFrame then cursorFrame.Image = cursorAssetPath end
-		updateCursorVisibility()
-	end)
-
-	if not cursorConn then
-		cursorConn = RunService.RenderStepped:Connect(function()
-			if cursorFrame and cursorFrame.Visible then
-				local m = UserInputService:GetMouseLocation()
-				cursorFrame.Position = UDim2.fromOffset(m.X - 4, m.Y - 4)
-			end
-		end)
-	end
-end
-
-setupCursor()
-
--- ============ COLOR FUNCTIONS ============
 local function applyMenuColorToGui(newColor)
 	local oldAccent = Colors.Accent
 	local oldOn = Colors.ToggleOn
@@ -350,7 +255,47 @@ local function applyTextColorToGui(newColor)
 	end
 end
 
--- ============ NOTIFICATIONS ============
+-- Custom cursor
+local cursorFrame = nil
+local cursorConn = nil
+local function setupCursor()
+	if not config.customCursor then
+		UserInputService.MouseIconEnabled = true
+		if cursorFrame then cursorFrame.Visible = false end
+		return
+	end
+	if not cursorFrame then
+		cursorFrame = Instance.new("ImageLabel")
+		cursorFrame.Name = "NoxCursor"
+		cursorFrame.BackgroundTransparency = 1
+		cursorFrame.Size = UDim2.fromOffset(28, 28)
+		cursorFrame.ZIndex = 999999
+		cursorFrame.Visible = false
+		cursorFrame.Parent = screenGui
+		task.spawn(function()
+			if type(request) == "function" and type(writefile) == "function" then
+				pcall(function()
+					local r = request({Url = CURSOR_URL, Method = "GET"})
+					if r and r.Success and r.Body then
+						writefile(CURSOR_FILE, r.Body)
+						local a = getCustomAsset(CURSOR_URL)
+						if a then cursorFrame.Image = a end
+					end
+				end)
+			end
+		end)
+	end
+	if not cursorConn then
+		cursorConn = UserInputService.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement and cursorFrame then
+				local m = UserInputService:GetMouseLocation() + GuiService:GetGuiInset()
+				cursorFrame.Position = UDim2.fromOffset(m.X - 4, m.Y - 4)
+			end
+		end)
+	end
+end
+setupCursor()
+
 local notifHolder = Instance.new("Frame")
 notifHolder.Name = "Notifications"
 notifHolder.BackgroundTransparency = 1
@@ -372,16 +317,12 @@ local MAX_NOTIFS = 5
 local PogchampAsset = nil
 
 task.spawn(function()
-	if type(isfile) == "function" and isfile(POGCHAMP_FILE) then
-		local a = safeGetCustomAsset(POGCHAMP_FILE)
-		if a then PogchampAsset = a end
-	end
-	if not PogchampAsset and type(request) == "function" and type(writefile) == "function" then
+	if type(request) == "function" and type(writefile) == "function" then
 		pcall(function()
 			local r = request({Url = POGCHAMP_URL, Method = "GET"})
 			if r and r.Success and r.Body then
-				writefile(POGCHAMP_FILE, r.Body)
-				local a = safeGetCustomAsset(POGCHAMP_FILE)
+				writefile("nox_pogchamp.png", r.Body)
+				local a = getCustomAsset("nox_pogchamp.png")
 				if a then PogchampAsset = a end
 			end
 		end)
@@ -400,7 +341,7 @@ local function createNotification(msg, kind)
 	local n = Instance.new("Frame")
 	n.Name = "Notification"
 	n.BackgroundColor3 = Colors.Panel
-	n.BackgroundTransparency = 0.05
+	n.BackgroundTransparency = 0.12
 	n.BorderSizePixel = 0
 	n.Size = UDim2.fromOffset(330, 50)
 	n.LayoutOrder = notifCounter
@@ -461,13 +402,11 @@ local function createNotification(msg, kind)
 		end
 	end)
 end
-
 local function notifyEnabled(m) createNotification(m, "enabled") end
 local function notifyWarning(m) createNotification(m, "warning") end
 local function notifyError(m) createNotification(m, "error") end
 local function notifySuccess(m) createNotification(m, "success") end
 
--- ============ TOOLTIP ============
 local tooltip = nil
 local tooltipToken = 0
 local function hideTooltip()
@@ -522,7 +461,6 @@ local function addTooltip(obj, text)
 	obj.MouseLeave:Connect(function() hideTooltip() end)
 end
 
--- ============ DRAGGABLE ============
 local function makeDraggable(obj, handle, posName, isNox, requireMenu)
 	local dragging = false
 	local dragStart
@@ -557,6 +495,7 @@ local function makeDraggable(obj, handle, posName, isNox, requireMenu)
 			if ec then ec:Disconnect(); ec = nil end
 			if isNox then config.noxPosition = {x = obj.Position.X.Offset, y = obj.Position.Y.Offset}
 			elseif posName == "searchBar" then config.searchPosition = {x = obj.Position.X.Offset, y = obj.Position.Y.Offset}
+			elseif posName == "overlay" then config.overlayPosition = {x = obj.Position.X.Offset, y = obj.Position.Y.Offset}
 			else config.positions[posName] = {x = obj.Position.X.Offset, y = obj.Position.Y.Offset} end
 			saveConfig()
 		end)
@@ -565,14 +504,204 @@ end
 
 local buildColorPickerRow
 
--- ============ STATE ============
+-- Overlay system
+local TextOverlay = {
+	Frame = nil,
+	ListLabel = nil,
+	Gradient = nil,
+	IsEnabled = false,
+	UpdateConn = nil,
+	RgbConn = nil,
+	RgbOffset = 0,
+}
+
+local OVERLAY_FONT_MAP = {
+	Gotham = Enum.Font.Gotham,
+	GothamBold = Enum.Font.GothamBold,
+	SourceSans = Enum.Font.SourceSans,
+	SourceSansBold = Enum.Font.SourceSansBold,
+	Arial = Enum.Font.Arial,
+	ArialBold = Enum.Font.ArialBold,
+	Cartoon = Enum.Font.Cartoon,
+	Code = Enum.Font.Code,
+	SciFi = Enum.Font.SciFi,
+	Fantasy = Enum.Font.Fantasy,
+	BuilderSans = Enum.Font.BuilderSans,
+	BuilderSansMedium = Enum.Font.BuilderSansMedium,
+	BuilderSansBold = Enum.Font.BuilderSansBold
+}
+
+local function buildEnabledModsList()
+	local lines = {}
+	for cat, feats in pairs(buttonData) do
+		for name, d in pairs(feats) do
+			if d.isToggle and d.getState and d.getState() then
+				table.insert(lines, name)
+			end
+		end
+	end
+	table.sort(lines, function(a, b) return a < b end)
+	return lines
+end
+
+local function refreshOverlayText()
+	if not TextOverlay.ListLabel then return end
+	local lines = buildEnabledModsList()
+	if #lines == 0 then
+		TextOverlay.ListLabel.Text = "(none enabled)"
+		TextOverlay.ListLabel.TextColor3 = Colors.MutedText
+	else
+		TextOverlay.ListLabel.Text = table.concat(lines, "\n")
+		TextOverlay.ListLabel.TextColor3 = Colors.Text
+	end
+end
+
+local function getOverlayFont()
+	local sel = getSetting("noxvape", "overlay", "font", "GothamBold")
+	return OVERLAY_FONT_MAP[sel] or Enum.Font.GothamBold
+end
+
+local function getOverlayFontSize()
+	return tonumber(getSetting("noxvape", "overlay", "fontSize", 16)) or 16
+end
+
+local function getOverlayTextColor()
+	local c = getSetting("noxvape", "overlay", "textColor", Color3.fromRGB(235, 240, 245))
+	return typeof(c) == "Color3" and c or Color3.fromRGB(235, 240, 245)
+end
+
+local function getOverlayBgColor()
+	local c = getSetting("noxvape", "overlay", "bgColor", Color3.fromRGB(10, 12, 16))
+	return typeof(c) == "Color3" and c or Color3.fromRGB(10, 12, 16)
+end
+
+local function getOverlayTransparency()
+	return tonumber(getSetting("noxvape", "overlay", "bgTransparency", 0.3)) or 0.3
+end
+
+local function getOverlayGradientEnabled()
+	return getSetting("noxvape", "overlay", "gradient", false) == true
+end
+
+local function refreshOverlayStyle()
+	if not TextOverlay.Frame or not TextOverlay.ListLabel then return end
+	TextOverlay.ListLabel.Font = getOverlayFont()
+	TextOverlay.ListLabel.TextSize = getOverlayFontSize()
+	TextOverlay.ListLabel.TextColor3 = getOverlayTextColor()
+	TextOverlay.Frame.BackgroundColor3 = getOverlayBgColor()
+	TextOverlay.Frame.BackgroundTransparency = getOverlayTransparency()
+	if TextOverlay.Gradient then
+		TextOverlay.Gradient.Enabled = getOverlayGradientEnabled()
+	end
+end
+
+local function createTextOverlay()
+	if TextOverlay.Frame then return end
+	local frame = Instance.new("Frame")
+	frame.Name = "TextOverlay"
+	frame.BackgroundColor3 = getOverlayBgColor()
+	frame.BackgroundTransparency = getOverlayTransparency()
+	frame.BorderSizePixel = 0
+	frame.Size = UDim2.fromOffset(160, 80)
+	frame.AutomaticSize = Enum.AutomaticSize.XY
+	frame.Position = UDim2.fromOffset(config.overlayPosition.x or 400, config.overlayPosition.y or 200)
+	frame.Visible = true
+	frame.ZIndex = 80000
+	frame.Parent = screenGui
+	TextOverlay.Frame = frame
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = frame
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Colors.Accent
+	stroke.Thickness = 1
+	stroke.Transparency = 0.4
+	stroke.Parent = frame
+
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 6)
+	padding.PaddingBottom = UDim.new(0, 6)
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = frame
+
+	local listLabel = Instance.new("TextLabel")
+	listLabel.Name = "List"
+	listLabel.BackgroundTransparency = 1
+	listLabel.Size = UDim2.fromOffset(140, 30)
+	listLabel.AutomaticSize = Enum.AutomaticSize.XY
+	listLabel.Font = getOverlayFont()
+	listLabel.TextSize = getOverlayFontSize()
+	listLabel.TextColor3 = getOverlayTextColor()
+	listLabel.TextXAlignment = Enum.TextXAlignment.Left
+	listLabel.TextYAlignment = Enum.TextYAlignment.Top
+	listLabel.Text = "(none enabled)"
+	listLabel.ZIndex = 80001
+	listLabel.Parent = frame
+	TextOverlay.ListLabel = listLabel
+
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)),
+		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 100)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 255, 100)),
+		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(100, 200, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 100, 255))
+	})
+	grad.Rotation = 0
+	grad.Enabled = getOverlayGradientEnabled()
+	grad.Parent = listLabel
+	TextOverlay.Gradient = grad
+
+	makeDraggable(frame, frame, "overlay", false, true)
+	refreshOverlayText()
+	refreshOverlayStyle()
+end
+
+local function destroyTextOverlay()
+	if TextOverlay.UpdateConn then TextOverlay.UpdateConn:Disconnect(); TextOverlay.UpdateConn = nil end
+	if TextOverlay.RgbConn then TextOverlay.RgbConn:Disconnect(); TextOverlay.RgbConn = nil end
+	if TextOverlay.Frame then TextOverlay.Frame:Destroy(); TextOverlay.Frame = nil end
+	TextOverlay.ListLabel = nil
+	TextOverlay.Gradient = nil
+	TextOverlay.IsEnabled = false
+end
+
+local function startTextOverlay()
+	createTextOverlay()
+	TextOverlay.IsEnabled = true
+	if TextOverlay.UpdateConn then TextOverlay.UpdateConn:Disconnect() end
+	TextOverlay.UpdateConn = RunService.Heartbeat:Connect(function()
+		if not TextOverlay.IsEnabled then return end
+		refreshOverlayText()
+		refreshOverlayStyle()
+		if TextOverlay.Frame then
+			TextOverlay.Frame.Visible = true
+		end
+	end)
+	if TextOverlay.RgbConn then TextOverlay.RgbConn:Disconnect() end
+	TextOverlay.RgbConn = RunService.Heartbeat:Connect(function()
+		if not TextOverlay.IsEnabled or not getOverlayGradientEnabled() then return end
+		if TextOverlay.Gradient then
+			TextOverlay.RgbOffset = (TextOverlay.RgbOffset + 0.005) % 1
+			TextOverlay.Gradient.Offset = Vector2.new(TextOverlay.RgbOffset, 0)
+		end
+	end)
+end
+
+local function stopTextOverlay()
+	destroyTextOverlay()
+end
+
+NoxLib = nil
+
 local buttonData = {}
 local categoryFrames = {}
 local categoryStates = {}
-local categoryTabButtons = {}
-
--- ============ FEATURES API ============
 local Features = {}
+
 function Features.get(cat, name) return buttonData[cat] and buttonData[cat][name] end
 function Features.isEnabled(cat, name)
 	local d = Features.get(cat, name)
@@ -614,7 +743,6 @@ function Features.enable(cat, name) return Features.set(cat, name, true) end
 local _categories = {}
 local _categoryMap = {}
 
--- ============ SOUNDS ============
 local soundObj = Instance.new("Sound")
 soundObj.Name = "GUIClickSound"
 soundObj.Volume = config.soundVolume
@@ -623,7 +751,6 @@ local menuSoundObj = Instance.new("Sound")
 menuSoundObj.Name = "MenuSound"
 menuSoundObj.Volume = config.soundVolume
 menuSoundObj.Parent = screenGui
-
 local function playButtonSound()
 	if not config.guiSounds then return end
 	local id = config.soundId
@@ -641,11 +768,10 @@ local function playMenuSound(isOpen)
 	end
 end
 
--- ============ BLUR ============
 local dimFrame = Instance.new("Frame")
 dimFrame.Name = "BackgroundDim"
 dimFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-dimFrame.BackgroundTransparency = 0.7
+dimFrame.BackgroundTransparency = 0.55
 dimFrame.BorderSizePixel = 0
 dimFrame.Size = UDim2.fromScale(1, 1)
 dimFrame.ZIndex = 10000
@@ -654,7 +780,7 @@ dimFrame.Active = true
 dimFrame.Parent = screenGui
 local blurEffect = Instance.new("BlurEffect")
 blurEffect.Name = "NoxBlur"
-blurEffect.Size = 10
+blurEffect.Size = 18
 blurEffect.Enabled = false
 blurEffect.Parent = Lighting
 
@@ -703,7 +829,6 @@ local function selfDestruct()
 	pcall(function() UserInputService.MouseIconEnabled = true end)
 end
 
--- ============ FAST FLAGS ============
 local function findLoaderFolder()
 	local pref = workspace:FindFirstChild(FFLAGS_FOLDER_NAME)
 	if pref and (pref:IsA("Folder") or pref:IsA("Configuration")) then return pref end
@@ -750,7 +875,6 @@ local function applyFastFlags(flags)
 	return count, nil
 end
 
--- ============ PROFILES ============
 local function ensureProfilesFolder()
 	if type(isfolder) == "function" and type(makefolder) == "function" then
 		if not isFolderSafe(PROFILES_FOLDER) then makeFolderSafe(PROFILES_FOLDER) end
@@ -894,21 +1018,12 @@ local function applyProfileData(data)
 	return true
 end
 
--- ============ STATE ============
 local waitingForBind = nil
 local settingsWindow = nil
 local settingsVisible = false
 local fastFlagWindow = nil
 local profilesWindow = nil
 local filterButtons
-
-local function refreshTabHighlight()
-	for cn, tb in pairs(categoryTabButtons) do
-		if tb and tb.Parent then
-			tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action
-		end
-	end
-end
 
 local function setMenuVisible(visible)
 	if not tabPanel then return end
@@ -932,11 +1047,16 @@ local function setMenuVisible(visible)
 		restoreOtherScreenGuis()
 		if was then playMenuSound(false) end
 	end
-	updateCursorVisibility()
+	if config.customCursor and cursorFrame then
+		UserInputService.MouseIconEnabled = not visible
+		cursorFrame.Visible = visible
+	elseif cursorFrame then
+		UserInputService.MouseIconEnabled = true
+		cursorFrame.Visible = false
+	end
 	updateBlur()
 end
 
--- ============ COLOR PICKER FACTORY ============
 buildColorPickerRow = function(parent, layoutOrder, initial, onChanged, labelText)
 	local default = typeof(initial) == "Color3" and initial or Color3.fromRGB(255, 255, 255)
 	local current = default
@@ -1146,13 +1266,14 @@ buildColorPickerRow = function(parent, layoutOrder, initial, onChanged, labelTex
 	return frame, setFullColor
 end
 
--- ============ FAST FLAG WINDOW ============
+-- Fast Flag Window
 local function createFastFlagWindow()
 	if fastFlagWindow then fastFlagWindow.Visible = not fastFlagWindow.Visible return end
 	local wx, wy = getPosition("fastFlagWindow", 340, 100)
 	local w = Instance.new("Frame")
-	w.Name = "FastFlagWindow"; w.BackgroundColor3 = Colors.Panel
-	w.BorderSizePixel = 0; w.Size = UDim2.fromOffset(360, 500)
+	w.Name = "FastFlagWindow"
+	w.BackgroundColor3 = Colors.Panel; w.BorderSizePixel = 0
+	w.Size = UDim2.fromOffset(360, 500)
 	w.Position = UDim2.fromOffset(wx, wy)
 	w.ClipsDescendants = true; w.ZIndex = 45000; w.Parent = screenGui
 	fastFlagWindow = w
@@ -1168,19 +1289,23 @@ local function createFastFlagWindow()
 	cb.Position = UDim2.new(1,0,0,0); cb.FontFace = UIFont
 	cb.TextSize = 20; cb.TextColor3 = Colors.MutedText; cb.Text = "X"
 	cb.ZIndex = 45002; cb.Parent = h
+	cb.MouseEnter:Connect(function() cb.TextColor3 = Colors.Text end)
+	cb.MouseLeave:Connect(function() cb.TextColor3 = Colors.MutedText end)
 	cb.MouseButton1Click:Connect(function() w.Visible = false end)
 	makeDraggable(w, h, "fastFlagWindow", false)
 	local importRow = Instance.new("Frame")
 	importRow.BackgroundTransparency = 1
 	importRow.Position = UDim2.fromOffset(12, 48)
-	importRow.Size = UDim2.new(1,-24,0,64); importRow.Parent = w
+	importRow.Size = UDim2.new(1,-24,0,64)
+	importRow.Parent = w
 	local importName = Instance.new("TextBox")
 	importName.BackgroundColor3 = Colors.ToggleOff; importName.BorderSizePixel = 0
 	importName.Size = UDim2.new(0.4, -4, 0, 26)
 	importName.FontFace = UIFont; importName.TextSize = 13
 	importName.TextColor3 = Colors.Text
 	importName.PlaceholderText = "Name..."; importName.PlaceholderColor3 = Colors.MutedText
-	importName.Text = ""; importName.ClearTextOnFocus = false; importName.Parent = importRow
+	importName.Text = ""; importName.ClearTextOnFocus = false
+	importName.Parent = importRow
 	local importJson = Instance.new("TextBox")
 	importJson.BackgroundColor3 = Colors.ToggleOff; importJson.BorderSizePixel = 0
 	importJson.Position = UDim2.fromOffset(0, 30)
@@ -1189,14 +1314,16 @@ local function createFastFlagWindow()
 	importJson.TextColor3 = Colors.Text
 	importJson.PlaceholderText = '{"FFlagExample":"True", ...}'
 	importJson.PlaceholderColor3 = Colors.MutedText
-	importJson.Text = ""; importJson.ClearTextOnFocus = false; importJson.Parent = importRow
+	importJson.Text = ""; importJson.ClearTextOnFocus = false
+	importJson.Parent = importRow
 	local importBtn = Instance.new("TextButton")
 	importBtn.AutoButtonColor = false; importBtn.BackgroundColor3 = Colors.Accent
 	importBtn.BorderSizePixel = 0; importBtn.AnchorPoint = Vector2.new(1, 0)
 	importBtn.Position = UDim2.new(1, 0, 0, 30)
 	importBtn.Size = UDim2.fromOffset(80, 26)
 	importBtn.FontFace = UIFont; importBtn.TextSize = 13
-	importBtn.TextColor3 = Colors.Text; importBtn.Text = "Import"; importBtn.Parent = importRow
+	importBtn.TextColor3 = Colors.Text; importBtn.Text = "Import"
+	importBtn.Parent = importRow
 	local content = Instance.new("ScrollingFrame")
 	content.BackgroundTransparency = 1; content.BorderSizePixel = 0
 	content.Position = UDim2.fromOffset(12, 118)
@@ -1204,7 +1331,8 @@ local function createFastFlagWindow()
 	content.ScrollBarThickness = 4; content.ScrollBarImageColor3 = Colors.Accent
 	content.ScrollingDirection = Enum.ScrollingDirection.Y
 	content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-	content.CanvasSize = UDim2.fromOffset(0,0); content.Parent = w
+	content.CanvasSize = UDim2.fromOffset(0,0)
+	content.Parent = w
 	local cl = Instance.new("UIListLayout")
 	cl.SortOrder = Enum.SortOrder.LayoutOrder; cl.Padding = UDim.new(0,4); cl.Parent = content
 	local selected = {}
@@ -1264,13 +1392,13 @@ local function createFastFlagWindow()
 				playButtonSound()
 				local n, err = applyFastFlags(entry.flags)
 				if err then notifyError("Failed: " .. err)
-				else notifySuccess("Loaded " .. n .. " flags") end
+				else notifySuccess("Loaded " .. n .. " flags from " .. entry.name) end
 			end)
 			db.MouseButton1Click:Connect(function()
 				playButtonSound()
 				if entry.instance and entry.instance.Parent then
 					entry.instance:Destroy()
-					notifyWarning("Deleted: " .. entry.name)
+					notifyWarning("Deleted flags: " .. entry.name)
 					task.defer(refresh)
 				end
 			end)
@@ -1322,7 +1450,7 @@ local function createFastFlagWindow()
 	task.defer(refresh)
 end
 
--- ============ PROFILES WINDOW ============
+-- Profiles Window
 local function createProfilesWindow()
 	if profilesWindow then profilesWindow.Visible = not profilesWindow.Visible return end
 	local wx, wy = getPosition("profilesWindow", 660, 100)
@@ -1446,22 +1574,21 @@ local function createProfilesWindow()
 	task.defer(refresh)
 end
 
--- ============ SETTINGS WINDOW ============
+-- Settings Window
 local function createSettingsWindow()
 	if settingsWindow then settingsWindow.Visible = not settingsWindow.Visible settingsVisible = settingsWindow.Visible return end
 	local wx, wy = getPosition("settingsWindow", 50, 100)
 	local w = Instance.new("Frame")
 	w.Name = "SettingsWindow"; w.BackgroundColor3 = Colors.Panel
-	w.BorderSizePixel = 0
-	local vpY = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize.Y or 1080
-	w.Size = UDim2.fromOffset(320, math.min(640, vpY - 120))
+	w.BorderSizePixel = 0; w.Size = UDim2.fromOffset(320, 700)
 	w.Position = UDim2.fromOffset(wx, wy)
 	w.ClipsDescendants = true; w.Parent = screenGui
 	local h = Instance.new("TextButton")
 	h.AutoButtonColor = false; h.BackgroundColor3 = Colors.Panel
 	h.BorderSizePixel = 0; h.Size = UDim2.new(1,0,0,40)
 	h.FontFace = UIFont; h.TextSize = 20; h.TextColor3 = Colors.Text
-	h.TextXAlignment = Enum.TextXAlignment.Left; h.Text = "  Settings"; h.Parent = w
+	h.TextXAlignment = Enum.TextXAlignment.Left
+	h.Text = "  Settings"; h.Parent = w
 	local cb = Instance.new("TextButton")
 	cb.AutoButtonColor = false; cb.BackgroundTransparency = 1
 	cb.Size = UDim2.fromOffset(40,40); cb.AnchorPoint = Vector2.new(1,0)
@@ -1545,8 +1672,10 @@ local function createSettingsWindow()
 		local dd = Instance.new("TextButton")
 		dd.AutoButtonColor = false; dd.BackgroundColor3 = Colors.Action
 		dd.BorderSizePixel = 0; dd.AnchorPoint = Vector2.new(1,0)
-		dd.Position = UDim2.new(1,0,0,0); dd.Size = UDim2.fromOffset(120,38)
-		dd.FontFace = UIFont; dd.TextSize = 15; dd.TextColor3 = Colors.Text
+		dd.Position = UDim2.new(1,0,0,0)
+		dd.Size = UDim2.fromOffset(120,38); dd.FontFace = UIFont
+		dd.TextSize = 15; dd.TextColor3 = Colors.Text
+		dd.TextTruncate = Enum.TextTruncate.AtEnd
 		dd.Text = tostring(getter()); dd.Parent = f
 		local dc = Instance.new("Frame")
 		dc.BackgroundColor3 = Colors.Setting; dc.BorderSizePixel = 0
@@ -1562,10 +1691,11 @@ local function createSettingsWindow()
 			ob.Text = tostring(opt); ob.LayoutOrder = oi; ob.Parent = dc
 			ob.MouseButton1Click:Connect(function()
 				setter(opt); dd.Text = tostring(opt); dc.Visible = false
-				saveConfig()
 			end)
 		end
-		dd.MouseButton1Click:Connect(function() dc.Visible = not dc.Visible end)
+		dd.MouseButton1Click:Connect(function()
+			dc.Visible = not dc.Visible
+		end)
 	end
 	addLabel("Button Sounds", 1)
 	addCheck("Button Sounds", function() return config.guiSounds end, function(v) config.guiSounds = v end, 2, "Play sounds on clicks")
@@ -1585,9 +1715,12 @@ local function createSettingsWindow()
 		return config.customCursor == true
 	end, function(v)
 		config.customCursor = v
-		updateCursorVisibility()
-		saveConfig()
-	end, 10, "Use custom cursor image")
+		setupCursor()
+		if tabPanel and tabPanel.Visible and cursorFrame then
+			UserInputService.MouseIconEnabled = not v
+			cursorFrame.Visible = v
+		end
+	end, 10, "Use custom Linux cursor")
 	addLabel("Menu Color", 11)
 	local curMenuColor = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
 	buildColorPickerRow(content, 12, curMenuColor, function(c) applyMenuColorToGui(c) end, "Accent Color")
@@ -1599,7 +1732,7 @@ local function createSettingsWindow()
 	local curTextColor = Color3.new(config.textColor.r, config.textColor.g, config.textColor.b)
 	buildColorPickerRow(content, 15, curTextColor, function(c) applyTextColorToGui(c) end, "Text Color")
 	addBtn("Revert Text to Default", function()
-		applyTextColorToGui(DEFAULT_TEXT_COLOR)
+		applyTextColorToGui(Color3.fromRGB(235, 240, 245))
 		notifySuccess("Text color reset")
 	end, 16, false)
 	addLabel("Managers", 17)
@@ -1615,11 +1748,12 @@ local function createSettingsWindow()
 	sd.FontFace = UIFont; sd.TextSize = 17; sd.TextColor3 = Colors.Text
 	sd.Text = "Self Destruct"; sd.Parent = sf
 	sd.MouseButton1Click:Connect(function() playButtonSound() selfDestruct() end)
+	addTooltip(sd, "Destroy the GUI")
 	settingsWindow = w
 	settingsVisible = true
 end
 
--- ============ INIT ============
+-- Init
 local function init()
 	ensureFastFlagsFolder()
 	local root = Instance.new("Frame")
@@ -1635,7 +1769,7 @@ local function init()
 		card.Name = catName; card.BackgroundColor3 = Colors.Panel
 		card.BorderSizePixel = 0; card.Size = UDim2.fromOffset(210, 560)
 		card.Position = UDim2.fromOffset(sx, sy)
-		card.Visible = config.tabs[catName] ~= false
+		card.Visible = config.tabs[catName] == true
 		card.ClipsDescendants = true; card.ZIndex = 11000 + ci; card.Parent = root
 		categoryFrames[catName] = card
 		categoryStates[catName] = card.Visible
@@ -1954,20 +2088,20 @@ local function init()
 	logo.Size = UDim2.fromScale(1.4,1.4); logo.ScaleType = Enum.ScaleType.Fit
 	logo.Parent = th
 	task.spawn(function()
-		local loaded = false
-		if type(isfile) == "function" and isfile(LOGO_FILE) then
-			local a = safeGetCustomAsset(LOGO_FILE)
-			if a then logo.Image = a; loaded = true end
+		if type(request) == "function" and type(writefile) == "function" then
+			local need = true
+			if type(isfile) == "function" then need = not isfile(LOGO_FILE) end
+			if need then
+				pcall(function()
+					local r = request({Url = LOGO_URL, Method = "GET"})
+					if r and r.Success and r.Body then writefile(LOGO_FILE, r.Body) end
+				end)
+			end
 		end
-		if not loaded and type(request) == "function" and type(writefile) == "function" then
-			pcall(function()
-				local r = request({Url = LOGO_URL, Method = "GET"})
-				if r and r.Success and r.Body then
-					writefile(LOGO_FILE, r.Body)
-					local a = safeGetCustomAsset(LOGO_FILE)
-					if a then logo.Image = a end
-				end
-			end)
+		task.wait(0.12)
+		if type(isfile) == "function" and isfile(LOGO_FILE) then
+			local ok, a = pcall(function() return getCustomAsset(LOGO_FILE) end)
+			if ok and a then logo.Image = a end
 		end
 	end)
 	makeDraggable(tabPanel, th, "noxvape", true)
@@ -1980,19 +2114,16 @@ local function init()
 		local cn = catDef.name
 		local tb = Instance.new("TextButton")
 		tb.Name = cn; tb.LayoutOrder = i; tb.AutoButtonColor = false
-		tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action
-		tb.BorderSizePixel = 0
+		tb.BackgroundColor3 = Colors.Action; tb.BorderSizePixel = 0
 		tb.Size = UDim2.new(1,0,0,36); tb.FontFace = UIFont
 		tb.TextSize = 17; tb.TextColor3 = Colors.Text; tb.Text = cn
 		tb.TextXAlignment = Enum.TextXAlignment.Center; tb.Parent = ts
-		categoryTabButtons[cn] = tb
 		tb.MouseButton1Click:Connect(function()
 			playButtonSound()
 			local c = categoryFrames[cn]
 			if not c or not c.Parent then return end
 			categoryStates[cn] = not categoryStates[cn]
 			c.Visible = categoryStates[cn]
-			tb.BackgroundColor3 = categoryStates[cn] and Colors.Accent or Colors.Action
 			config.tabs[cn] = categoryStates[cn]
 			saveConfig()
 		end)
@@ -2008,25 +2139,20 @@ local function init()
 	si.BackgroundTransparency = 1; si.AnchorPoint = Vector2.new(0.5,0.5)
 	si.Position = UDim2.fromScale(0.5,0.5)
 	si.Size = UDim2.fromScale(1,1); si.ScaleType = Enum.ScaleType.Fit
-	si.ImageColor3 = Color3.fromRGB(255,255,255)
-	si.Image = "rbxassetid://6034654127"; si.Parent = sb
+	si.ImageColor3 = Color3.fromRGB(255,255,255); si.Parent = sb
 	task.spawn(function()
-		local loaded = false
-		if type(isfile) == "function" and isfile("nox_settings_icon.png") then
-			local a = safeGetCustomAsset("nox_settings_icon.png")
-			if a then si.Image = a; loaded = true end
-		end
-		if not loaded and type(request) == "function" and type(writefile) == "function" then
+		if type(request) == "function" and type(writefile) == "function" then
 			pcall(function()
 				local r = request({Url = SETTINGS_ICON_URL, Method = "GET"})
 				if r and r.Success and r.Body then
 					writefile("nox_settings_icon.png", r.Body)
-					local a = safeGetCustomAsset("nox_settings_icon.png")
+					local a = getCustomAsset("nox_settings_icon.png")
 					if a then si.Image = a end
 				end
 			end)
 		end
 	end)
+	if si.Image == "" then si.Image = "rbxassetid://6034654127" end
 	sb.MouseButton1Click:Connect(function() playButtonSound() createSettingsWindow() end)
 	local sxf = Instance.new("Frame")
 	sxf.Name = "SearchBar"; sxf.BackgroundColor3 = Colors.Panel
@@ -2128,9 +2254,8 @@ local function init()
 	saveConfig()
 end
 
--- ============ PUBLIC API ============
+-- Public API
 local NoxLib = {}
-
 function NoxLib.addCategory(name)
 	assert(type(name) == "string" and name ~= "", "NoxLib.addCategory: name must be a non-empty string")
 	if _categoryMap[name] then return end
@@ -2138,7 +2263,6 @@ function NoxLib.addCategory(name)
 	table.insert(_categories, c)
 	_categoryMap[name] = c
 end
-
 function NoxLib.addButton(categoryName, opts)
 	assert(type(categoryName) == "string", "NoxLib.addButton: categoryName must be string")
 	assert(type(opts) == "table", "NoxLib.addButton: opts must be table")
@@ -2153,21 +2277,19 @@ function NoxLib.addButton(categoryName, opts)
 		settings = opts.settings
 	})
 end
-
 function NoxLib.notify(msg, kind) createNotification(msg, kind or "enabled") end
 function NoxLib.notifyEnabled(msg) notifyEnabled(msg) end
 function NoxLib.notifyWarning(msg) notifyWarning(msg) end
 function NoxLib.notifyError(msg) notifyError(msg) end
 function NoxLib.notifySuccess(msg) notifySuccess(msg) end
-
 NoxLib.Features = Features
 NoxLib.getSetting = getSetting
 NoxLib.setSetting = setSetting
 NoxLib.saveConfig = saveConfig
 NoxLib.setMenuVisible = setMenuVisible
 NoxLib.Colors = Colors
-
+NoxLib.startTextOverlay = startTextOverlay
+NoxLib.stopTextOverlay = stopTextOverlay
 function NoxLib.init() init() end
-
 _G.NoxLib = NoxLib
 return NoxLib
