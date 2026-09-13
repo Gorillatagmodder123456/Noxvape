@@ -22,6 +22,7 @@ local DEFAULT_TEXT_COLOR = Color3.fromRGB(235, 240, 245)
 
 local Languages = {
     en = { settings="Settings", gui="GUI", sounds="Sounds", managers="Managers", misc="Misc",
+        general="General", modules="Modules", notifications="Notifications", silentaim="Silent Aim", sound="Sound",
         back="Back", close="Close", search="Search...", search_features="Search features...",
         button_sounds="Button Sounds", sound_id="Sound ID", open_close="Open / Close Sounds",
         open_id="Open ID", close_id="Close ID", volume="Volume", visual="Visual Settings",
@@ -32,26 +33,29 @@ local Languages = {
         save="Save", load="Load", delete="Delete", sync_menu="Sync to Menu Color", rgb="RGB",
         toggled_on="enabled", toggled_off="disabled", config_cleared="Config cleared. Reload the script." },
     es = { settings="Ajustes", gui="Interfaz", sounds="Sonidos", managers="Gestores", misc="Otros",
+        general="General", modules="Módulos", notifications="Notificaciones", silentaim="Puntería Silenciosa", sound="Sonido",
         back="Atrás", close="Cerrar", search="Buscar...", search_features="Buscar funciones...",
         button_sounds="Sonidos de botones", sound_id="ID de sonido", open_close="Sonidos abrir/cerrar",
         open_id="ID abrir", close_id="ID cerrar", volume="Volumen", visual="Ajustes visuales",
-        blur="Desenfoque de fondo", menu_color="Color del menú", accent="Acento", text_color="Color de texto",
+        blur="Desenfoque", menu_color="Color del menú", accent="Acento", text_color="Color de texto",
         revert_default="Restaurar", revert_text="Restaurar texto", language="Idioma",
         fastflag="Gestor Fast Flag", profiles="Perfiles", clear_config="Borrar config",
         self_destruct="Autodestruir", press_key="Pulsa tecla...", bind="Tecla", none="NINGUNA",
         save="Guardar", load="Cargar", delete="Borrar", sync_menu="Sincronizar", rgb="RGB",
         toggled_on="activado", toggled_off="desactivado", config_cleared="Config borrada." },
     fr = { settings="Paramètres", gui="Interface", sounds="Sons", managers="Gestionnaires", misc="Divers",
+        general="Général", modules="Modules", notifications="Notifications", silentaim="Visée Silencieuse", sound="Son",
         back="Retour", close="Fermer", search="Rechercher...", search_features="Rechercher...",
         button_sounds="Sons des boutons", sound_id="ID son", open_close="Sons ouvrir/fermer",
-        open_id="ID ouvrir", close_id="ID fermer", volume="Volume", visual="Paramètres visuels",
+        open_id="ID ouvrir", close_id="ID fermer", volume="Volume", visual="Visuels",
         blur="Flou", menu_color="Couleur du menu", accent="Accent", text_color="Couleur du texte",
         revert_default="Réinitialiser", revert_text="Réinitialiser texte", language="Langue",
-        fastflag="Gestionnaire Fast Flag", profiles="Profils", clear_config="Effacer la config",
+        fastflag="Gestionnaire Fast Flag", profiles="Profils", clear_config="Effacer config",
         self_destruct="Auto-destruction", press_key="Appuyez touche...", bind="Touche", none="AUCUNE",
         save="Enregistrer", load="Charger", delete="Suppr", sync_menu="Sync", rgb="RGB",
         toggled_on="activé", toggled_off="désactivé", config_cleared="Config effacée." },
     de = { settings="Einstellungen", gui="Oberfläche", sounds="Töne", managers="Verwalter", misc="Sonstiges",
+        general="Allgemein", modules="Module", notifications="Benachrichtigungen", silentaim="Stilles Zielen", sound="Ton",
         back="Zurück", close="Schließen", search="Suchen...", search_features="Suchen...",
         button_sounds="Knopftöne", sound_id="Ton-ID", open_close="Öffnen/Schließen",
         open_id="Öffnen-ID", close_id="Schließen-ID", volume="Lautstärke", visual="Visuell",
@@ -62,6 +66,7 @@ local Languages = {
         save="Speichern", load="Laden", delete="Löschen", sync_menu="Sync", rgb="RGB",
         toggled_on="aktiviert", toggled_off="deaktiviert", config_cleared="Konfig gelöscht." },
     pt = { settings="Configurações", gui="Interface", sounds="Sons", managers="Gerentes", misc="Diversos",
+        general="Geral", modules="Módulos", notifications="Notificações", silentaim="Mira Silenciosa", sound="Som",
         back="Voltar", close="Fechar", search="Pesquisar...", search_features="Pesquisar...",
         button_sounds="Sons dos botões", sound_id="ID do som", open_close="Abrir/fechar",
         open_id="ID abrir", close_id="ID fechar", volume="Volume", visual="Visual",
@@ -847,7 +852,6 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then wheelDragging = false; dDragging = false end
     end)
-    local pickerHeight = 190
     if showSync then
         local syncBtn = Instance.new("TextButton")
         syncBtn.AutoButtonColor = false
@@ -1044,14 +1048,6 @@ local fastFlagWindow = nil
 local profilesWindow = nil
 local filterButtons
 
-local function getSettingsCategoryFrame(catKey)
-    if not settingsScroll then return nil end
-    for _, c in ipairs(settingsScroll:GetChildren()) do
-        if c:IsA("Frame") and c.Name == "Cat__" .. catKey then return c end
-    end
-    return nil
-end
-
 local function animateToSettings(category)
     if currentSettingsCategory == category then return end
     currentSettingsCategory = category
@@ -1062,11 +1058,18 @@ local function animateToSettings(category)
         TweenService:Create(settingsView, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(0, 0) }):Play()
     end
     if settingsTitleLabel then
-        settingsTitleLabel.Text = "  " .. (Languages[config.language] and (Languages[config.language][category] or category) or category)
+        local names = {
+            general = "General", gui = "GUI", modules = "Modules",
+            notifications = "Notifications", silentaim = "Silent Aim",
+            sound = "Sound", managers = "Managers"
+        }
+        settingsTitleLabel.Text = "  " .. (names[category] or category)
     end
-    for _, c in ipairs(settingsScroll and settingsScroll:GetChildren() or {}) do
-        if c:IsA("Frame") and c.Name:sub(1, 5) == "Cat__" then
-            c.Visible = c.Name == "Cat__" .. category
+    if settingsScroll then
+        for _, c in ipairs(settingsScroll:GetChildren()) do
+            if c:IsA("Frame") and c.Name:sub(1, 5) == "Cat__" then
+                c.Visible = c.Name == "Cat__" .. category
+            end
         end
     end
 end
@@ -1079,7 +1082,7 @@ local function animateToMain()
         local t = TweenService:Create(settingsView, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(tabPanel.AbsoluteSize.X, 0) })
         t:Play()
         t.Completed:Connect(function()
-            if currentSettingsCategory == nil then settingsView.Visible = false end
+            if currentSettingsCategory == nil and settingsView then settingsView.Visible = false end
         end)
     end
 end
@@ -1115,7 +1118,7 @@ local function createSettingsWindow()
     w.Name = "SettingsWindow"
     w.BackgroundColor3 = Colors.Panel
     w.BorderSizePixel = 0
-    w.Size = UDim2.fromOffset(200, 240)
+    w.Size = UDim2.fromOffset(200, 340)
     w.Position = UDim2.fromOffset(wx, wy)
     w.ClipsDescendants = true
     w.ZIndex = 40000
@@ -1158,18 +1161,21 @@ local function createSettingsWindow()
     ll.Padding = UDim.new(0, 6)
     ll.Parent = list
     local cats = {
-        { name = L("gui"), key = "gui" },
-        { name = L("sounds"), key = "sounds" },
-        { name = L("managers"), key = "managers" },
-        { name = L("misc"), key = "misc" }
+        { name = "General", key = "general" },
+        { name = "GUI", key = "gui" },
+        { name = "Modules", key = "modules" },
+        { name = "Notifications", key = "notifications" },
+        { name = "Silent Aim", key = "silentaim" },
+        { name = "Sound", key = "sound" },
+        { name = "Managers", key = "managers" }
     }
     for i, cat in ipairs(cats) do
         local b = Instance.new("TextButton")
         b.AutoButtonColor = false
         b.BackgroundColor3 = Colors.Action
         b.BorderSizePixel = 0
-        b.Size = UDim2.new(1, 0, 0, 34)
-        b.FontFace = UIFont; b.TextSize = 16
+        b.Size = UDim2.new(1, 0, 0, 32)
+        b.FontFace = UIFont; b.TextSize = 15
         b.TextColor3 = Colors.Text
         b.Text = cat.name
         b.LayoutOrder = i
@@ -1198,6 +1204,27 @@ local function addSettingsLabel(parent, text, order)
     l.Text = text
     l.LayoutOrder = order
     l.Parent = parent
+end
+local function addSettingsDesc(parent, text, order)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.Size = UDim2.new(1, 0, 0, 28)
+    l.FontFace = UIFont; l.TextSize = 12
+    l.TextColor3 = Colors.MutedText
+    l.TextWrapped = true
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.TextYAlignment = Enum.TextYAlignment.Top
+    l.Text = text
+    l.LayoutOrder = order
+    l.Parent = parent
+end
+local function addSettingsDivider(parent, order)
+    local f = Instance.new("Frame")
+    f.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+    f.BorderSizePixel = 0
+    f.Size = UDim2.new(1, 0, 0, 1)
+    f.LayoutOrder = order
+    f.Parent = parent
 end
 local function addSettingsCheck(parent, labelText, getter, setter, order, tip)
     local f = Instance.new("Frame")
@@ -1354,52 +1381,98 @@ local function makeSettingsCategoryFrame(parent, catKey, order)
 end
 
 local function buildSettingsContent()
-    local guiFrame = makeSettingsCategoryFrame(settingsScroll, "gui", 1)
-    local soundsFrame = makeSettingsCategoryFrame(settingsScroll, "sounds", 2)
-    local managersFrame = makeSettingsCategoryFrame(settingsScroll, "managers", 3)
-    local miscFrame = makeSettingsCategoryFrame(settingsScroll, "misc", 4)
+    local generalFrame = makeSettingsCategoryFrame(settingsScroll, "general", 1)
+    local guiFrame = makeSettingsCategoryFrame(settingsScroll, "gui", 2)
+    local modulesFrame = makeSettingsCategoryFrame(settingsScroll, "modules", 3)
+    local notifFrame = makeSettingsCategoryFrame(settingsScroll, "notifications", 4)
+    local silentFrame = makeSettingsCategoryFrame(settingsScroll, "silentaim", 5)
+    local soundFrame = makeSettingsCategoryFrame(settingsScroll, "sound", 6)
+    local managersFrame = makeSettingsCategoryFrame(settingsScroll, "managers", 7)
 
-    addSettingsLabel(guiFrame, L("language"), 1)
-    makeSearchableDropdown(guiFrame, 2, L("language"), LanguageNames, config.language, function(opt)
+    addSettingsDesc(generalFrame, "General settings and preferences", 1)
+    addSettingsLabel(generalFrame, L("language"), 2)
+    makeSearchableDropdown(generalFrame, 3, L("language"), LanguageNames, config.language, function(opt)
         config.language = opt
         saveConfig()
-        notifyEnabled("Language set to " .. opt)
+        notifyEnabled("Language: " .. opt)
     end)
-    addSettingsLabel(guiFrame, L("visual"), 3)
+    addSettingsDivider(generalFrame, 4)
+    addSettingsLabel(generalFrame, "Config", 5)
+    addSettingsBtn(generalFrame, L("clear_config"), function() clearConfigAndRestart() end, 6, false)
+    addSettingsBtn(generalFrame, L("self_destruct"), function() selfDestruct() end, 7, false)
+
+    addSettingsDesc(guiFrame, "Customize the appearance of the Vape GUI", 1)
+    addSettingsLabel(guiFrame, "GUI Theme", 2)
+    local cmc = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
+    buildColorPickerRow(guiFrame, 3, cmc, function(c) applyMenuColorToGui(c) end, L("accent"), "__menuAccent", false)
+    addSettingsLabel(guiFrame, "Text Color", 4)
+    local ctc = Color3.new(config.textColor.r, config.textColor.g, config.textColor.b)
+    buildColorPickerRow(guiFrame, 5, ctc, function(c) applyTextColorToGui(c) end, L("text_color"), "__menuText", false)
+    addSettingsBtn(guiFrame, L("revert_default"), function()
+        applyMenuColorToGui(DEFAULT_MENU_COLOR); applyTextColorToGui(DEFAULT_TEXT_COLOR)
+        notifyEnabled("Colors reset to default")
+    end, 6, false)
+    addSettingsDivider(guiFrame, 7)
+    addSettingsLabel(guiFrame, "Rebind GUI", 8)
+    local guiKeyBtn = Instance.new("TextButton")
+    guiKeyBtn.AutoButtonColor = false
+    guiKeyBtn.BackgroundColor3 = Colors.Action
+    guiKeyBtn.BorderSizePixel = 0
+    guiKeyBtn.Size = UDim2.new(1, 0, 0, 34)
+    guiKeyBtn.FontFace = UIFont; guiKeyBtn.TextSize = 15
+    guiKeyBtn.TextColor3 = Colors.Text
+    guiKeyBtn.Text = config.guiKeybind
+    guiKeyBtn.LayoutOrder = 9
+    guiKeyBtn.Parent = guiFrame
+    guiKeyBtn.MouseEnter:Connect(function() guiKeyBtn.BackgroundColor3 = Colors.ActionHover end)
+    guiKeyBtn.MouseLeave:Connect(function() guiKeyBtn.BackgroundColor3 = Colors.Action end)
+    local waitingGuiKey = false
+    guiKeyBtn.MouseButton1Click:Connect(function()
+        playButtonSound()
+        waitingGuiKey = true
+        guiKeyBtn.Text = "Press key..."
+        guiKeyBtn.BackgroundColor3 = Colors.Accent
+    end)
+    UserInputService.InputBegan:Connect(function(input, gp)
+        if not waitingGuiKey then return end
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        local key = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil
+        if not key then return end
+        waitingGuiKey = false
+        config.guiKeybind = key
+        guiKeyBtn.Text = key
+        guiKeyBtn.BackgroundColor3 = Colors.Action
+        saveConfig()
+        notifyEnabled("GUI keybind: " .. key)
+    end)
+    addSettingsDivider(guiFrame, 10)
     addSettingsCheck(guiFrame, L("blur"), function() return getSetting("noxvape", "blur", "enabled", false) end, function(v)
         setSetting("noxvape", "blur", "enabled", v); updateBlur()
-    end, 4)
-    addSettingsLabel(guiFrame, L("menu_color"), 5)
-    local cmc = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
-    buildColorPickerRow(guiFrame, 6, cmc, function(c) applyMenuColorToGui(c) end, L("accent"), "__menuAccent", false)
-    addSettingsBtn(guiFrame, L("revert_default"), function()
-        applyMenuColorToGui(DEFAULT_MENU_COLOR)
-        notifyEnabled("Menu color reset to default")
-    end, 7, false)
-    addSettingsLabel(guiFrame, L("text_color"), 8)
-    local ctc = Color3.new(config.textColor.r, config.textColor.g, config.textColor.b)
-    buildColorPickerRow(guiFrame, 9, ctc, function(c) applyTextColorToGui(c) end, L("text_color"), "__menuText", false)
-    addSettingsBtn(guiFrame, L("revert_text"), function()
-        applyTextColorToGui(DEFAULT_TEXT_COLOR)
-        notifyEnabled("Text color reset to default")
-    end, 10, false)
+    end, 11)
 
-    addSettingsLabel(soundsFrame, L("button_sounds"), 1)
-    addSettingsCheck(soundsFrame, L("button_sounds"), function() return config.guiSounds end, function(v) config.guiSounds = v end, 2)
-    addSettingsTextRow(soundsFrame, L("sound_id"), function() return config.soundId end, function(v) config.soundId = v end, 3, "0")
-    addSettingsLabel(soundsFrame, L("open_close"), 4)
-    addSettingsCheck(soundsFrame, L("open_close"), function() return config.menuSounds end, function(v) config.menuSounds = v end, 5)
-    addSettingsTextRow(soundsFrame, L("open_id"), function() return config.openSoundId end, function(v) config.openSoundId = v end, 6, "0")
-    addSettingsTextRow(soundsFrame, L("close_id"), function() return config.closeSoundId end, function(v) config.closeSoundId = v end, 7, "0")
-    addSettingsVolSlider(soundsFrame, 8)
+    addSettingsDesc(modulesFrame, "Customize global behaviour for modules", 1)
+    addSettingsLabel(modulesFrame, "Nothing here yet", 2)
 
-    addSettingsLabel(managersFrame, L("managers"), 1)
+    addSettingsDesc(notifFrame, "Configure the Notification system", 1)
+    addSettingsLabel(notifFrame, "Nothing here yet", 2)
+
+    addSettingsDesc(silentFrame, "Configure the global Silent Aiming system", 1)
+    addSettingsLabel(silentFrame, "Nothing here yet", 2)
+
+    addSettingsDesc(soundFrame, "Configures how sound is handled in the Client", 1)
+    addSettingsLabel(soundFrame, L("button_sounds"), 2)
+    addSettingsCheck(soundFrame, L("button_sounds"), function() return config.guiSounds end, function(v) config.guiSounds = v end, 3)
+    addSettingsTextRow(soundFrame, L("sound_id"), function() return config.soundId end, function(v) config.soundId = v end, 4, "0")
+    addSettingsDivider(soundFrame, 5)
+    addSettingsLabel(soundFrame, L("open_close"), 6)
+    addSettingsCheck(soundFrame, L("open_close"), function() return config.menuSounds end, function(v) config.menuSounds = v end, 7)
+    addSettingsTextRow(soundFrame, L("open_id"), function() return config.openSoundId end, function(v) config.openSoundId = v end, 8, "0")
+    addSettingsTextRow(soundFrame, L("close_id"), function() return config.closeSoundId end, function(v) config.closeSoundId = v end, 9, "0")
+    addSettingsVolSlider(soundFrame, 10)
+
+    addSettingsDesc(managersFrame, "Fast flags and profiles", 1)
     addSettingsBtn(managersFrame, L("fastflag"), function() createFastFlagWindow() end, 2, false)
     addSettingsBtn(managersFrame, L("profiles"), function() createProfilesWindow() end, 3, false)
-
-    addSettingsLabel(miscFrame, L("misc"), 1)
-    addSettingsBtn(miscFrame, L("clear_config"), function() clearConfigAndRestart() end, 2, false)
-    addSettingsBtn(miscFrame, L("self_destruct"), function() selfDestruct() end, 3, false)
 end
 
 local function createFastFlagWindow()
@@ -1510,6 +1583,43 @@ local function createFastFlagWindow()
     task.defer(refresh)
 end
 
+local function listProfiles()
+    if not canUseFiles() then return {} end
+    local list, seen = {}, {}
+    for _, rp in ipairs(listfilesSafe(PROFILES_FOLDER)) do
+        local norm = tostring(rp):gsub("\\", "/")
+        local name = norm:match("([^/]+)%.json$")
+        if name and not seen[name] then seen[name] = true; table.insert(list, { name = name, path = rp }) end
+    end
+    return list
+end
+local function readProfile(name)
+    if not canUseFiles() then return nil end
+    for _, p in ipairs({ PROFILES_FOLDER.."/"..name..".json", PROFILES_FOLDER.."\\"..name..".json", name..".json" }) do
+        if isfile(p) then
+            local ok, d = pcall(function() return HttpService:JSONDecode(readfile(p)) end)
+            if ok and type(d) == "table" then return d end
+        end
+    end
+    return nil
+end
+local function applyProfileData(data)
+    if type(data) ~= "table" then return false end
+    if type(data.features) == "table" then config.features = data.features end
+    if type(data.settings) == "table" then config.settings = data.settings end
+    if type(data.keybinds) == "table" then config.keybinds = data.keybinds end
+    if type(data.tabs) == "table" then config.tabs = data.tabs end
+    if type(data.menuColor) == "table" then
+        applyMenuColorToGui(Color3.new(data.menuColor.r, data.menuColor.g, data.menuColor.b))
+    end
+    if type(data.textColor) == "table" then
+        applyTextColorToGui(Color3.new(data.textColor.r, data.textColor.g, data.textColor.b))
+    end
+    if type(data.rainbowPickers) == "table" then config.rainbowPickers = data.rainbowPickers end
+    saveConfig()
+    return true
+end
+
 local function createProfilesWindow()
     if profilesWindow then
         profilesWindow.Visible = not profilesWindow.Visible
@@ -1606,43 +1716,6 @@ local function createProfilesWindow()
     task.defer(refresh)
 end
 
-local function listProfiles()
-    if not canUseFiles() then return {} end
-    local list, seen = {}, {}
-    for _, rp in ipairs(listfilesSafe(PROFILES_FOLDER)) do
-        local norm = tostring(rp):gsub("\\", "/")
-        local name = norm:match("([^/]+)%.json$")
-        if name and not seen[name] then seen[name] = true; table.insert(list, { name = name, path = rp }) end
-    end
-    return list
-end
-local function readProfile(name)
-    if not canUseFiles() then return nil end
-    for _, p in ipairs({ PROFILES_FOLDER.."/"..name..".json", PROFILES_FOLDER.."\\"..name..".json", name..".json" }) do
-        if isfile(p) then
-            local ok, d = pcall(function() return HttpService:JSONDecode(readfile(p)) end)
-            if ok and type(d) == "table" then return d end
-        end
-    end
-    return nil
-end
-local function applyProfileData(data)
-    if type(data) ~= "table" then return false end
-    if type(data.features) == "table" then config.features = data.features end
-    if type(data.settings) == "table" then config.settings = data.settings end
-    if type(data.keybinds) == "table" then config.keybinds = data.keybinds end
-    if type(data.tabs) == "table" then config.tabs = data.tabs end
-    if type(data.menuColor) == "table" then
-        applyMenuColorToGui(Color3.new(data.menuColor.r, data.menuColor.g, data.menuColor.b))
-    end
-    if type(data.textColor) == "table" then
-        applyTextColorToGui(Color3.new(data.textColor.r, data.textColor.g, data.textColor.b))
-    end
-    if type(data.rainbowPickers) == "table" then config.rainbowPickers = data.rainbowPickers end
-    saveConfig()
-    return true
-end
-
 local function init()
     ensureFastFlagsFolder()
     local nx = tonumber(config.noxPosition.x) or 18
@@ -1656,42 +1729,6 @@ local function init()
     tabPanel.ClipsDescendants = true
     tabPanel.ZIndex = 20000
     tabPanel.Parent = screenGui
-
-    local th = Instance.new("TextButton")
-    th.Name = "Header"
-    th.AutoButtonColor = false
-    th.BackgroundColor3 = Colors.Panel
-    th.BorderSizePixel = 0
-    th.Size = UDim2.new(1, 0, 0, 46)
-    th.Text = ""
-    th.ZIndex = 20001
-    th.Parent = tabPanel
-    local logo = Instance.new("ImageLabel")
-    logo.BackgroundTransparency = 1
-    logo.AnchorPoint = Vector2.new(0.5, 0.5)
-    logo.Position = UDim2.fromScale(0.5, 0.5)
-    logo.Size = UDim2.fromScale(1.4, 1.4)
-    logo.ScaleType = Enum.ScaleType.Fit
-    logo.ZIndex = 20002
-    logo.Parent = th
-    task.spawn(function()
-        if type(request) == "function" and type(writefile) == "function" then
-            local need = true
-            if type(isfile) == "function" then need = not isfile(LOGO_FILE) end
-            if need then
-                pcall(function()
-                    local r = request({ Url = LOGO_URL, Method = "GET" })
-                    if r and r.Success and r.Body then writefile(LOGO_FILE, r.Body) end
-                end)
-            end
-        end
-        task.wait(0.12)
-        if type(isfile) == "function" and isfile(LOGO_FILE) then
-            local ok, a = pcall(function() return getCustomAsset(LOGO_FILE) end)
-            if ok and a then logo.Image = a end
-        end
-    end)
-    makeDraggable(tabPanel, th, "noxvape", true)
 
     mainMenuView = Instance.new("Frame")
     mainMenuView.Name = "MainMenuView"
@@ -1708,6 +1745,7 @@ local function init()
     settingsView.Size = UDim2.new(1, 0, 1, 0)
     settingsView.ZIndex = 20010
     settingsView.Visible = false
+    settingsView.ClipsDescendants = true
     settingsView.Parent = tabPanel
     local sh = Instance.new("TextButton")
     sh.AutoButtonColor = false
@@ -1761,6 +1799,42 @@ local function init()
     sl.Parent = settingsScroll
 
     buildSettingsContent()
+
+    local th = Instance.new("TextButton")
+    th.Name = "Header"
+    th.AutoButtonColor = false
+    th.BackgroundColor3 = Colors.Panel
+    th.BorderSizePixel = 0
+    th.Size = UDim2.new(1, 0, 0, 46)
+    th.Text = ""
+    th.ZIndex = 20500
+    th.Parent = tabPanel
+    local logo = Instance.new("ImageLabel")
+    logo.BackgroundTransparency = 1
+    logo.AnchorPoint = Vector2.new(0.5, 0.5)
+    logo.Position = UDim2.fromScale(0.5, 0.5)
+    logo.Size = UDim2.fromScale(1.4, 1.4)
+    logo.ScaleType = Enum.ScaleType.Fit
+    logo.ZIndex = 20501
+    logo.Parent = th
+    task.spawn(function()
+        if type(request) == "function" and type(writefile) == "function" then
+            local need = true
+            if type(isfile) == "function" then need = not isfile(LOGO_FILE) end
+            if need then
+                pcall(function()
+                    local r = request({ Url = LOGO_URL, Method = "GET" })
+                    if r and r.Success and r.Body then writefile(LOGO_FILE, r.Body) end
+                end)
+            end
+        end
+        task.wait(0.12)
+        if type(isfile) == "function" and isfile(LOGO_FILE) then
+            local ok, a = pcall(function() return getCustomAsset(LOGO_FILE) end)
+            if ok and a then logo.Image = a end
+        end
+    end)
+    makeDraggable(tabPanel, th, "noxvape", true)
 
     local ts = Instance.new("Frame")
     ts.BackgroundTransparency = 1
@@ -1855,7 +1929,7 @@ local function init()
         card.Visible = config.tabs[catName] == true
         card.ClipsDescendants = true
         card.ZIndex = 11000 + ci
-        card.Parent = screenGui
+        card.Parent = mainMenuView
         categoryFrames[catName] = card
         categoryStates[catName] = card.Visible
         local hdr = Instance.new("TextButton")
