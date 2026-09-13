@@ -72,7 +72,7 @@ local function ensureFastFlagsFolder()
 end
 
 local config = {
-	version = 2,
+	version = 3,
 	features = {}, tabs = {}, positions = {}, keybinds = {}, settings = {},
 	noxPosition = { x = 18, y = 75 },
 	searchPosition = { x = 300, y = 50 },
@@ -134,6 +134,23 @@ local function repairConfig()
 end
 repairConfig()
 
+local function deriveAccentSet(base)
+	local h, s, v = base:ToHSV()
+	return {
+		Accent = base,
+		ToggleOn = Color3.fromHSV(h, math.clamp(s * 0.85, 0, 1), math.clamp(v * 0.75, 0, 1)),
+		ToggleOnHover = Color3.fromHSV(h, math.clamp(s * 0.90, 0, 1), math.clamp(v * 0.85, 0, 1))
+	}
+end
+
+do
+	local initial = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
+	local set = deriveAccentSet(initial)
+	Colors.Accent = set.Accent
+	Colors.ToggleOn = set.ToggleOn
+	Colors.ToggleOnHover = set.ToggleOnHover
+end
+
 local function ensureCategoryData(cat)
 	if type(config.features[cat]) ~= "table" then config.features[cat] = {} end
 	if type(config.keybinds[cat]) ~= "table" then config.keybinds[cat] = {} end
@@ -191,6 +208,39 @@ screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 100000
 screenGui.Parent = playerGui
+
+local function applyMenuColorToGui(newColor)
+	local oldAccent = Colors.Accent
+	local oldOn = Colors.ToggleOn
+	local oldOnHover = Colors.ToggleOnHover
+	local set = deriveAccentSet(newColor)
+	Colors.Accent = set.Accent
+	Colors.ToggleOn = set.ToggleOn
+	Colors.ToggleOnHover = set.ToggleOnHover
+	config.menuColor = { r = newColor.R, g = newColor.G, b = newColor.B }
+	saveConfig()
+	for _, d in ipairs(screenGui:GetDescendants()) do
+		if d:IsA("GuiObject") then
+			local c = d.BackgroundColor3
+			if c == oldAccent then d.BackgroundColor3 = Colors.Accent
+			elseif c == oldOn then d.BackgroundColor3 = Colors.ToggleOn
+			elseif c == oldOnHover then d.BackgroundColor3 = Colors.ToggleOnHover
+			end
+		end
+		if d:IsA("UIStroke") then
+			if d.Color == oldAccent then d.Color = Colors.Accent end
+		end
+		if d:IsA("ScrollingFrame") then
+			if d.ScrollBarImageColor3 == oldAccent then d.ScrollBarImageColor3 = Colors.Accent end
+		end
+		if d:IsA("ImageLabel") then
+			if d.ImageColor3 == oldAccent then d.ImageColor3 = Colors.Accent end
+		end
+		if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
+			if d.TextColor3 == oldAccent then d.TextColor3 = Colors.Accent end
+		end
+	end
+end
 
 local notifHolder = Instance.new("Frame")
 notifHolder.Name = "Notifications"
@@ -575,25 +625,14 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 	syncBtn.ZIndex = 25003
 	syncBtn.Parent = frame
 	syncBtn.MouseEnter:Connect(function()
-		if syncBtn.BackgroundColor3 ~= Colors.Accent then
-			syncBtn.BackgroundColor3 = Colors.ActionHover
-		end
+		syncBtn.BackgroundColor3 = Colors.ActionHover
 	end)
 	syncBtn.MouseLeave:Connect(function()
-		if syncBtn.BackgroundColor3 ~= Colors.Accent then
-			syncBtn.BackgroundColor3 = Colors.Action
-		end
+		syncBtn.BackgroundColor3 = Colors.Action
 	end)
 	syncBtn.MouseButton1Click:Connect(function()
-		config.menuColor = {r = current.R, g = current.G, b = current.B}
-		saveConfig()
-		syncBtn.BackgroundColor3 = Colors.Accent
-		notifyEnabled("Menu color synced")
-		task.delay(0.6, function()
-			if syncBtn and syncBtn.Parent then
-				syncBtn.BackgroundColor3 = Colors.Action
-			end
-		end)
+		applyMenuColorToGui(current)
+		notifyEnabled("Menu color applied")
 	end)
 	local function closePicker()
 		pickerFrame.Visible = false
@@ -946,12 +985,7 @@ local function countEnabledFeatures(data)
 end
 local function applyProfileData(data)
 	if type(data) ~= "table" then return false end
-	if type(data.features) == "table" then
-		for cat, feats in pairs(config.features) do
-			config.features[cat] = config.features[cat] or {}
-		end
-		config.features = data.features
-	end
+	if type(data.features) == "table" then config.features = data.features end
 	if type(data.settings) == "table" then config.settings = data.settings end
 	if type(data.keybinds) == "table" then config.keybinds = data.keybinds end
 	if type(data.tabs) == "table" then config.tabs = data.tabs end
@@ -964,7 +998,10 @@ local function applyProfileData(data)
 	if type(data.openSoundId) == "string" then config.openSoundId = data.openSoundId end
 	if type(data.closeSoundId) == "string" then config.closeSoundId = data.closeSoundId end
 	if type(data.guiKeybind) == "string" then config.guiKeybind = data.guiKeybind end
-	if type(data.menuColor) == "table" then config.menuColor = data.menuColor end
+	if type(data.menuColor) == "table" then
+		local newColor = Color3.new(data.menuColor.r, data.menuColor.g, data.menuColor.b)
+		applyMenuColorToGui(newColor)
+	end
 	for cat, feats in pairs(buttonData) do
 		for name, d in pairs(feats) do
 			if d.isToggle then
@@ -974,11 +1011,7 @@ local function applyProfileData(data)
 				end
 				local curState = d.getState and d.getState() or false
 				if curState ~= newState then
-					if newState then
-						if type(d.action) == "function" then pcall(d.action, true) end
-					else
-						if type(d.action) == "function" then pcall(d.action, false) end
-					end
+					if type(d.action) == "function" then pcall(d.action, newState) end
 					if d.setState then d.setState(newState, true) end
 				end
 			end
