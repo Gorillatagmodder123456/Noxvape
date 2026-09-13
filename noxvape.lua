@@ -7,6 +7,7 @@ local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
 local CONFIG_FILE = "noxvape.json"
 local PROFILES_FOLDER = "noxvape_profiles"
 local FFLAGS_FOLDER_NAME = "noxvape_fastflags"
@@ -20,92 +21,71 @@ local DEFAULT_MENU_COLOR = Color3.fromRGB(55, 150, 200)
 local DEFAULT_TEXT_COLOR = Color3.fromRGB(235, 240, 245)
 
 local Languages = {
-    en = {
-        settings = "Settings", gui = "GUI", sounds = "Sounds", managers = "Managers", misc = "Misc", other = "Other",
-        back = "Back", close = "Close", search = "Search...", search_features = "Search features...",
-        button_sounds = "Button Sounds", sound_id = "Sound ID", open_close = "Open / Close Sounds",
-        open_id = "Open ID", close_id = "Close ID", volume = "Volume", visual = "Visual Settings",
-        blur = "Blur Background", menu_color = "Menu Color", accent = "Accent Color", text_color = "Text Color",
-        revert_default = "Revert to Default", revert_text = "Revert Text to Default", language = "Language",
-        fastflag = "Fast Flag Manager", profiles = "Profiles", clear_config = "Clear Config",
-        clear_config_confirm = "Reset everything to defaults?", self_destruct = "Self Destruct",
-        press_key = "Press key...", bind = "Bind", none = "NONE", save = "Save", load = "Load", delete = "Delete",
-        sync_menu = "Sync to Menu Color", rgb = "RGB", toggled_on = "enabled", toggled_off = "disabled",
-        config_cleared = "Config cleared. Reload the script."
-    },
-    es = {
-        settings = "Ajustes", gui = "Interfaz", sounds = "Sonidos", managers = "Gestores", misc = "Otros", other = "Otro",
-        back = "Atrás", close = "Cerrar", search = "Buscar...", search_features = "Buscar funciones...",
-        button_sounds = "Sonidos de botones", sound_id = "ID de sonido", open_close = "Sonidos abrir/cerrar",
-        open_id = "ID abrir", close_id = "ID cerrar", volume = "Volumen", visual = "Ajustes visuales",
-        blur = "Desenfoque de fondo", menu_color = "Color del menú", accent = "Color de acento", text_color = "Color de texto",
-        revert_default = "Restaurar por defecto", revert_text = "Restaurar texto", language = "Idioma",
-        fastflag = "Gestor Fast Flag", profiles = "Perfiles", clear_config = "Borrar configuración",
-        clear_config_confirm = "¿Restablecer todo?", self_destruct = "Autodestruir",
-        press_key = "Pulsa una tecla...", bind = "Tecla", none = "NINGUNA", save = "Guardar", load = "Cargar", delete = "Borrar",
-        sync_menu = "Sincronizar con menú", rgb = "RGB", toggled_on = "activado", toggled_off = "desactivado",
-        config_cleared = "Configuración borrada. Recarga el script."
-    },
-    fr = {
-        settings = "Paramètres", gui = "Interface", sounds = "Sons", managers = "Gestionnaires", misc = "Divers", other = "Autre",
-        back = "Retour", close = "Fermer", search = "Rechercher...", search_features = "Rechercher...",
-        button_sounds = "Sons des boutons", sound_id = "ID son", open_close = "Sons ouvrir/fermer",
-        open_id = "ID ouvrir", close_id = "ID fermer", volume = "Volume", visual = "Paramètres visuels",
-        blur = "Flou d'arrière-plan", menu_color = "Couleur du menu", accent = "Couleur d'accent", text_color = "Couleur du texte",
-        revert_default = "Réinitialiser", revert_text = "Réinitialiser texte", language = "Langue",
-        fastflag = "Gestionnaire Fast Flag", profiles = "Profils", clear_config = "Effacer la config",
-        clear_config_confirm = "Tout réinitialiser?", self_destruct = "Auto-destruction",
-        press_key = "Appuyez sur une touche...", bind = "Touche", none = "AUCUNE", save = "Enregistrer", load = "Charger", delete = "Suppr",
-        sync_menu = "Sync menu", rgb = "RGB", toggled_on = "activé", toggled_off = "désactivé",
-        config_cleared = "Config effacée. Rechargez."
-    },
-    de = {
-        settings = "Einstellungen", gui = "Oberfläche", sounds = "Töne", managers = "Verwalter", misc = "Sonstiges", other = "Andere",
-        back = "Zurück", close = "Schließen", search = "Suchen...", search_features = "Funktionen suchen...",
-        button_sounds = "Knopftöne", sound_id = "Ton-ID", open_close = "Öffnen/Schließen Töne",
-        open_id = "Öffnen-ID", close_id = "Schließen-ID", volume = "Lautstärke", visual = "Visuelle Einstellungen",
-        blur = "Hintergrund verwischen", menu_color = "Menüfarbe", accent = "Akzentfarbe", text_color = "Textfarbe",
-        revert_default = "Zurücksetzen", revert_text = "Text zurücksetzen", language = "Sprache",
-        fastflag = "Fast Flag Manager", profiles = "Profile", clear_config = "Konfig löschen",
-        clear_config_confirm = "Alles zurücksetzen?", self_destruct = "Selbstzerstörung",
-        press_key = "Taste drücken...", bind = "Taste", none = "KEINE", save = "Speichern", load = "Laden", delete = "Löschen",
-        sync_menu = "Mit Menü synchronisieren", rgb = "RGB", toggled_on = "aktiviert", toggled_off = "deaktiviert",
-        config_cleared = "Konfig gelöscht. Neu laden."
-    },
-    pt = {
-        settings = "Configurações", gui = "Interface", sounds = "Sons", managers = "Gerentes", misc = "Diversos", other = "Outro",
-        back = "Voltar", close = "Fechar", search = "Pesquisar...", search_features = "Pesquisar recursos...",
-        button_sounds = "Sons dos botões", sound_id = "ID do som", open_close = "Sons abrir/fechar",
-        open_id = "ID abrir", close_id = "ID fechar", volume = "Volume", visual = "Config visual",
-        blur = "Desfoque de fundo", menu_color = "Cor do menu", accent = "Cor de destaque", text_color = "Cor do texto",
-        revert_default = "Restaurar padrão", revert_text = "Restaurar texto", language = "Idioma",
-        fastflag = "Gerenciador Fast Flag", profiles = "Perfis", clear_config = "Limpar config",
-        clear_config_confirm = "Redefinir tudo?", self_destruct = "Autodestruir",
-        press_key = "Pressione uma tecla...", bind = "Tecla", none = "NENHUMA", save = "Salvar", load = "Carregar", delete = "Excluir",
-        sync_menu = "Sync com menu", rgb = "RGB", toggled_on = "ativado", toggled_off = "desativado",
-        config_cleared = "Config limpa. Recarregue."
-    }
+    en = { settings="Settings", gui="GUI", sounds="Sounds", managers="Managers", misc="Misc",
+        back="Back", close="Close", search="Search...", search_features="Search features...",
+        button_sounds="Button Sounds", sound_id="Sound ID", open_close="Open / Close Sounds",
+        open_id="Open ID", close_id="Close ID", volume="Volume", visual="Visual Settings",
+        blur="Blur Background", menu_color="Menu Color", accent="Accent Color", text_color="Text Color",
+        revert_default="Revert to Default", revert_text="Revert Text to Default", language="Language",
+        fastflag="Fast Flag Manager", profiles="Profiles", clear_config="Clear Config",
+        self_destruct="Self Destruct", press_key="Press key...", bind="Bind", none="NONE",
+        save="Save", load="Load", delete="Delete", sync_menu="Sync to Menu Color", rgb="RGB",
+        toggled_on="enabled", toggled_off="disabled", config_cleared="Config cleared. Reload the script." },
+    es = { settings="Ajustes", gui="Interfaz", sounds="Sonidos", managers="Gestores", misc="Otros",
+        back="Atrás", close="Cerrar", search="Buscar...", search_features="Buscar funciones...",
+        button_sounds="Sonidos de botones", sound_id="ID de sonido", open_close="Sonidos abrir/cerrar",
+        open_id="ID abrir", close_id="ID cerrar", volume="Volumen", visual="Ajustes visuales",
+        blur="Desenfoque de fondo", menu_color="Color del menú", accent="Acento", text_color="Color de texto",
+        revert_default="Restaurar", revert_text="Restaurar texto", language="Idioma",
+        fastflag="Gestor Fast Flag", profiles="Perfiles", clear_config="Borrar config",
+        self_destruct="Autodestruir", press_key="Pulsa tecla...", bind="Tecla", none="NINGUNA",
+        save="Guardar", load="Cargar", delete="Borrar", sync_menu="Sincronizar", rgb="RGB",
+        toggled_on="activado", toggled_off="desactivado", config_cleared="Config borrada." },
+    fr = { settings="Paramètres", gui="Interface", sounds="Sons", managers="Gestionnaires", misc="Divers",
+        back="Retour", close="Fermer", search="Rechercher...", search_features="Rechercher...",
+        button_sounds="Sons des boutons", sound_id="ID son", open_close="Sons ouvrir/fermer",
+        open_id="ID ouvrir", close_id="ID fermer", volume="Volume", visual="Paramètres visuels",
+        blur="Flou", menu_color="Couleur du menu", accent="Accent", text_color="Couleur du texte",
+        revert_default="Réinitialiser", revert_text="Réinitialiser texte", language="Langue",
+        fastflag="Gestionnaire Fast Flag", profiles="Profils", clear_config="Effacer la config",
+        self_destruct="Auto-destruction", press_key="Appuyez touche...", bind="Touche", none="AUCUNE",
+        save="Enregistrer", load="Charger", delete="Suppr", sync_menu="Sync", rgb="RGB",
+        toggled_on="activé", toggled_off="désactivé", config_cleared="Config effacée." },
+    de = { settings="Einstellungen", gui="Oberfläche", sounds="Töne", managers="Verwalter", misc="Sonstiges",
+        back="Zurück", close="Schließen", search="Suchen...", search_features="Suchen...",
+        button_sounds="Knopftöne", sound_id="Ton-ID", open_close="Öffnen/Schließen",
+        open_id="Öffnen-ID", close_id="Schließen-ID", volume="Lautstärke", visual="Visuell",
+        blur="Verwischen", menu_color="Menüfarbe", accent="Akzent", text_color="Textfarbe",
+        revert_default="Zurücksetzen", revert_text="Text zurücksetzen", language="Sprache",
+        fastflag="Fast Flag Manager", profiles="Profile", clear_config="Konfig löschen",
+        self_destruct="Selbstzerstörung", press_key="Taste drücken...", bind="Taste", none="KEINE",
+        save="Speichern", load="Laden", delete="Löschen", sync_menu="Sync", rgb="RGB",
+        toggled_on="aktiviert", toggled_off="deaktiviert", config_cleared="Konfig gelöscht." },
+    pt = { settings="Configurações", gui="Interface", sounds="Sons", managers="Gerentes", misc="Diversos",
+        back="Voltar", close="Fechar", search="Pesquisar...", search_features="Pesquisar...",
+        button_sounds="Sons dos botões", sound_id="ID do som", open_close="Abrir/fechar",
+        open_id="ID abrir", close_id="ID fechar", volume="Volume", visual="Visual",
+        blur="Desfoque", menu_color="Cor do menu", accent="Acento", text_color="Cor do texto",
+        revert_default="Restaurar", revert_text="Restaurar texto", language="Idioma",
+        fastflag="Fast Flag", profiles="Perfis", clear_config="Limpar config",
+        self_destruct="Autodestruir", press_key="Pressione tecla...", bind="Tecla", none="NENHUMA",
+        save="Salvar", load="Carregar", delete="Excluir", sync_menu="Sync", rgb="RGB",
+        toggled_on="ativado", toggled_off="desativado", config_cleared="Config limpa." }
 }
 local LanguageNames = { "en", "es", "fr", "de", "pt" }
 
 local Colors = {
-    Panel = Color3.fromRGB(4, 5, 7),
-    PanelHover = Color3.fromRGB(9, 11, 15),
-    ToggleOff = Color3.fromRGB(7, 9, 12),
-    ToggleOffHover = Color3.fromRGB(14, 14, 14),
-    ToggleOn = Color3.fromRGB(30, 100, 140),
-    ToggleOnHover = Color3.fromRGB(40, 120, 165),
-    Action = Color3.fromRGB(10, 12, 16),
-    ActionHover = Color3.fromRGB(20, 20, 22),
-    Setting = Color3.fromRGB(5, 7, 10),
-    Accent = DEFAULT_MENU_COLOR,
-    Warning = Color3.fromRGB(255, 165, 0),
-    Error = Color3.fromRGB(220, 50, 50),
-    Text = DEFAULT_TEXT_COLOR,
-    MutedText = Color3.fromRGB(140, 150, 160),
-    Tooltip = Color3.fromRGB(3, 4, 6)
+    Panel = Color3.fromRGB(4,5,7), PanelHover = Color3.fromRGB(9,11,15),
+    ToggleOff = Color3.fromRGB(7,9,12), ToggleOffHover = Color3.fromRGB(14,14,14),
+    ToggleOn = Color3.fromRGB(30,100,140), ToggleOnHover = Color3.fromRGB(40,120,165),
+    Action = Color3.fromRGB(10,12,16), ActionHover = Color3.fromRGB(20,20,22),
+    Setting = Color3.fromRGB(5,7,10), Accent = DEFAULT_MENU_COLOR,
+    Warning = Color3.fromRGB(255,165,0), Error = Color3.fromRGB(220,50,50),
+    Text = DEFAULT_TEXT_COLOR, MutedText = Color3.fromRGB(140,150,160),
+    Tooltip = Color3.fromRGB(3,4,6)
 }
 local UIFont = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+
 local function getCustomAsset(p)
     if type(getcustomasset) == "function" then return getcustomasset(p) end
     if type(getsynasset) == "function" then return getsynasset(p) end
@@ -120,24 +100,16 @@ local function listfilesSafe(f)
     if ok and type(r) == "table" then return r end
     return {}
 end
-local function makeFolderSafe(f)
-    if type(makefolder) ~= "function" then return false end
-    return (pcall(makefolder, f))
-end
-local function delFileSafe(f)
-    if type(delfile) ~= "function" then return false end
-    return (pcall(delfile, f))
-end
+local function makeFolderSafe(f) if type(makefolder) ~= "function" then return false end return (pcall(makefolder, f)) end
+local function delFileSafe(f) if type(delfile) ~= "function" then return false end return (pcall(delfile, f)) end
 local function isFolderSafe(f)
     if type(isfolder) ~= "function" then return false end
-    local ok, r = pcall(isfolder, f)
-    return ok and r
+    local ok, r = pcall(isfolder, f); return ok and r
 end
 local function tw(o, p, d)
     if not o or not o.Parent then return end
     local t = TweenService:Create(o, TweenInfo.new(d or 0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), p)
-    t:Play()
-    return t
+    t:Play(); return t
 end
 local function safeCall(fn, ...)
     if type(fn) ~= "function" then return true end
@@ -156,11 +128,11 @@ local function ensureFastFlagsFolder()
 end
 
 local config = {
-    version = 4,
+    version = 5,
     features = {}, tabs = {}, positions = {}, keybinds = {}, settings = {},
     noxPosition = { x = 18, y = 75 }, searchPosition = { x = 300, y = 50 },
-    guiKeybind = "RightShift", guiSounds = false, soundId = "0", menuSounds = false,
-    openSoundId = "0", closeSoundId = "0", soundVolume = 0.5,
+    guiKeybind = "RightShift", guiSounds = false, soundId = "0",
+    menuSounds = false, openSoundId = "0", closeSoundId = "0", soundVolume = 0.5,
     menuColor = { r = 55/255, g = 150/255, b = 200/255 },
     textColor = { r = 235/255, g = 240/255, b = 245/255 },
     rainbowPickers = {}, language = "en"
@@ -285,6 +257,11 @@ local function getPosition(name, dx, dy)
     if type(p) == "table" and type(p.x) == "number" and type(p.y) == "number" then return p.x, p.y end
     return dx, dy
 end
+local function colorClose(a, b)
+    if not a or not b then return false end
+    local t = 0.02
+    return math.abs(a.R - b.R) < t and math.abs(a.G - b.G) < t and math.abs(a.B - b.B) < t
+end
 
 local oldGui = playerGui:FindFirstChild("Nox")
 if oldGui then oldGui:Destroy() end
@@ -298,12 +275,6 @@ screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 100000
 screenGui.Parent = playerGui
-
-local function colorClose(a, b)
-    if not a or not b then return false end
-    local t = 0.02
-    return math.abs(a.R - b.R) < t and math.abs(a.G - b.G) < t and math.abs(a.B - b.B) < t
-end
 
 local tooltip = nil
 local tooltipToken = 0
@@ -328,8 +299,8 @@ local function showTooltip(text)
         frame.ZIndex = 60000
         frame.Parent = screenGui
         local pad = Instance.new("UIPadding")
-        pad.PaddingTop = UDim.new(0, 7); pad.PaddingBottom = UDim.new(0, 7)
-        pad.PaddingLeft = UDim.new(0, 11); pad.PaddingRight = UDim.new(0, 11)
+        pad.PaddingTop = UDim.new(0,7); pad.PaddingBottom = UDim.new(0,7)
+        pad.PaddingLeft = UDim.new(0,11); pad.PaddingRight = UDim.new(0,11)
         pad.Parent = frame
         local lbl = Instance.new("TextLabel")
         lbl.BackgroundTransparency = 1
@@ -341,8 +312,7 @@ local function showTooltip(text)
         if token ~= tooltipToken then if frame.Parent then frame:Destroy() end return end
         local vp = camera.ViewportSize
         local w, h = frame.AbsoluteSize.X, frame.AbsoluteSize.Y
-        local x = mouse.X + 14
-        local y = mouse.Y + 16
+        local x = mouse.X + 14; local y = mouse.Y + 16
         if x + w > vp.X - 8 then x = mouse.X - w - 14 end
         if y + h > vp.Y - 8 then y = mouse.Y - h - 16 end
         frame.Position = UDim2.fromOffset(math.clamp(x, 8, math.max(8, vp.X - w - 8)), math.clamp(y, 8, math.max(8, vp.Y - h - 8)))
@@ -358,9 +328,7 @@ local function makeDraggable(obj, handle, posName, isNox)
     local dragging, dragStart, startPos, mc, ec
     handle.InputBegan:Connect(function(input)
         if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.MouseButton2 then return end
-        dragging = true
-        dragStart = input.Position
-        startPos = obj.Position
+        dragging = true; dragStart = input.Position; startPos = obj.Position
         hideTooltip()
         if mc then mc:Disconnect() end
         if ec then ec:Disconnect() end
@@ -391,9 +359,7 @@ local function makeDraggable(obj, handle, posName, isNox)
 end
 
 local function applyMenuColorToGui(newColor)
-    local oldAccent = Colors.Accent
-    local oldOn = Colors.ToggleOn
-    local oldOnHover = Colors.ToggleOnHover
+    local oldAccent, oldOn, oldOnHover = Colors.Accent, Colors.ToggleOn, Colors.ToggleOnHover
     local set = deriveAccentSet(newColor)
     Colors.Accent = set.Accent
     Colors.ToggleOn = set.ToggleOn
@@ -412,8 +378,8 @@ local function applyMenuColorToGui(newColor)
         if (d:IsA("ImageLabel") or d:IsA("ImageButton")) and colorClose(d.ImageColor3, oldAccent) then d.ImageColor3 = Colors.Accent end
         if (d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox")) and colorClose(d.TextColor3, oldAccent) then d.TextColor3 = Colors.Accent end
     end
-    for catName, feats in pairs(buttonData) do
-        for itemName, data in pairs(feats) do
+    for _, feats in pairs(buttonData) do
+        for _, data in pairs(feats) do
             if data.isToggle and data.button and data.getState and data.getState() then
                 if colorClose(data.button.BackgroundColor3, oldAccent) then data.button.BackgroundColor3 = Colors.Accent end
             end
@@ -512,8 +478,7 @@ local function createNotification(msg, kind)
     lbl.BackgroundTransparency = 1
     lbl.Position = UDim2.fromOffset(42, 0)
     lbl.Size = UDim2.new(1, -56, 1, 0)
-    lbl.FontFace = UIFont
-    lbl.TextSize = 17
+    lbl.FontFace = UIFont; lbl.TextSize = 17
     lbl.TextColor3 = accent
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.TextYAlignment = Enum.TextYAlignment.Center
@@ -566,8 +531,7 @@ end
 function Features.set(cat, name, enabled)
     local d = Features.get(cat, name)
     if not d then
-        ensureCategoryData(cat)
-        config.features[cat][name] = enabled and true or false
+        ensureCategoryData(cat); config.features[cat][name] = enabled and true or false
         saveConfig(); return false
     end
     if d.toggle then d.toggle(); return true end
@@ -634,7 +598,14 @@ blurEffect.Name = "NoxBlur"
 blurEffect.Size = 18
 blurEffect.Enabled = false
 blurEffect.Parent = Lighting
-local tabPanel, mainView, settingsView, settingsHeaderLabel
+
+local tabPanel
+local mainMenuView
+local settingsView
+local settingsScroll
+local settingsTitleLabel
+local currentSettingsCategory = nil
+
 local function updateBlur()
     if not tabPanel then return end
     blurEffect.Enabled = getSetting("noxvape", "blur", "enabled", false) and tabPanel.Visible
@@ -649,8 +620,7 @@ local function disableOtherScreenGuis()
     disabledGuiStates = {}
     for _, gui in ipairs(playerGui:GetChildren()) do
         if gui:IsA("ScreenGui") and gui ~= screenGui then
-            disabledGuiStates[gui] = gui.Enabled
-            gui.Enabled = false
+            disabledGuiStates[gui] = gui.Enabled; gui.Enabled = false
         end
     end
 end
@@ -659,8 +629,7 @@ local function restoreOtherScreenGuis()
     for gui, prev in pairs(disabledGuiStates) do
         if gui and gui.Parent then pcall(function() gui.Enabled = prev end) end
     end
-    disabledGuiStates = {}
-    otherGuisDisabled = false
+    disabledGuiStates = {}; otherGuisDisabled = false
 end
 local function selfDestruct()
     restoreOtherScreenGuis()
@@ -764,7 +733,7 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     pickerFrame.BackgroundColor3 = Colors.Panel
     pickerFrame.BorderSizePixel = 0
     pickerFrame.Position = UDim2.fromOffset(0, 42)
-    pickerFrame.Size = UDim2.fromOffset(194, 190)
+    pickerFrame.Size = UDim2.fromOffset(180, 190)
     pickerFrame.Visible = false
     pickerFrame.ZIndex = 25000
     pickerFrame.Parent = frame
@@ -775,7 +744,7 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     local wheel = Instance.new("ImageButton")
     wheel.AutoButtonColor = false
     wheel.BackgroundTransparency = 1
-    wheel.Size = UDim2.fromOffset(150, 150)
+    wheel.Size = UDim2.fromOffset(136, 136)
     wheel.Position = UDim2.fromOffset(8, 8)
     wheel.ZIndex = 25001
     wheel.Parent = pickerFrame
@@ -792,8 +761,8 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     local darkness = Instance.new("Frame")
     darkness.BackgroundColor3 = Color3.new(1, 1, 1)
     darkness.BorderSizePixel = 0
-    darkness.Position = UDim2.fromOffset(164, 8)
-    darkness.Size = UDim2.fromOffset(16, 150)
+    darkness.Position = UDim2.fromOffset(150, 8)
+    darkness.Size = UDim2.fromOffset(16, 136)
     darkness.ZIndex = 25001
     darkness.Parent = pickerFrame
     local dg = Instance.new("UIGradient"); dg.Rotation = 90; dg.Parent = darkness
@@ -808,8 +777,8 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     local cd = Instance.new("Frame")
     cd.BackgroundColor3 = current
     cd.BorderSizePixel = 0
-    cd.Position = UDim2.fromOffset(8, 166)
-    cd.Size = UDim2.fromOffset(172, 12)
+    cd.Position = UDim2.fromOffset(8, 152)
+    cd.Size = UDim2.fromOffset(158, 12)
     cd.ZIndex = 25002
     cd.Parent = pickerFrame
     local cds = Instance.new("UIStroke")
@@ -878,29 +847,30 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then wheelDragging = false; dDragging = false end
     end)
-    if showSync ~= false then
+    local pickerHeight = 190
+    if showSync then
         local syncBtn = Instance.new("TextButton")
         syncBtn.AutoButtonColor = false
         syncBtn.BackgroundColor3 = Colors.Action
         syncBtn.BorderSizePixel = 0
-        syncBtn.Position = UDim2.fromOffset(0, 236)
-        syncBtn.Size = UDim2.fromOffset(194, 32)
-        syncBtn.FontFace = UIFont; syncBtn.TextSize = 15
+        syncBtn.Position = UDim2.fromOffset(8, 172)
+        syncBtn.Size = UDim2.fromOffset(164, 26)
+        syncBtn.FontFace = UIFont; syncBtn.TextSize = 13
         syncBtn.TextColor3 = Colors.Text
         syncBtn.Text = L("sync_menu")
         syncBtn.Visible = false
         syncBtn.ZIndex = 25003
-        syncBtn.Parent = frame
+        syncBtn.Parent = pickerFrame
         syncBtn.MouseEnter:Connect(function() syncBtn.BackgroundColor3 = Colors.ActionHover end)
         syncBtn.MouseLeave:Connect(function() syncBtn.BackgroundColor3 = Colors.Action end)
         syncBtn.MouseButton1Click:Connect(function()
             setFullColor(Colors.Accent)
             notifyEnabled("Synced picker to menu color")
         end)
-        local function closePicker() pickerFrame.Visible = false; syncBtn.Visible = false; frame.Size = UDim2.new(1, 0, 0, 38) end
+        local function closePicker() pickerFrame.Visible = false; frame.Size = UDim2.new(1, 0, 0, 38) end
         local function openPicker()
-            pickerFrame.Visible = true; syncBtn.Visible = true
-            frame.Size = UDim2.new(1, 0, 0, 276)
+            pickerFrame.Visible = true
+            frame.Size = UDim2.new(1, 0, 0, 240)
             updateWP(); updateDS(); updateGrad()
         end
         preview.MouseEnter:Connect(function() ps.Color = Colors.Accent end)
@@ -908,16 +878,11 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
         preview.MouseButton1Click:Connect(function()
             if pickerFrame.Visible then closePicker() else openPicker() end
         end)
-        if pickerId == "__menuAccent" or pickerId == "__menuText" then
-            preview.MouseButton1Click:Connect(function()
-                if pickerFrame.Visible and not syncBtn.Visible then syncBtn.Visible = false end
-            end)
-        end
     else
         local function closePicker() pickerFrame.Visible = false; frame.Size = UDim2.new(1, 0, 0, 38) end
         local function openPicker()
             pickerFrame.Visible = true
-            frame.Size = UDim2.new(1, 0, 0, 244)
+            frame.Size = UDim2.new(1, 0, 0, 240)
             updateWP(); updateDS(); updateGrad()
         end
         preview.MouseEnter:Connect(function() ps.Color = Colors.Accent end)
@@ -1066,10 +1031,7 @@ local function makeSearchableDropdown(parent, order, label, options, current, on
     dd.MouseButton1Click:Connect(function()
         optionsFrame.Visible = not optionsFrame.Visible
         dd.BackgroundColor3 = optionsFrame.Visible and Colors.ActionHover or Colors.Action
-        if optionsFrame.Visible then
-            searchBox.Text = ""
-            refreshList("")
-        end
+        if optionsFrame.Visible then searchBox.Text = ""; refreshList("") end
     end)
     refreshList("")
     return container, dd, optionsFrame
@@ -1080,9 +1042,47 @@ local settingsWindow = nil
 local settingsVisible = false
 local fastFlagWindow = nil
 local profilesWindow = nil
-local currentSettingsCategory = nil
 local filterButtons
-local filterSettingsButtons
+
+local function getSettingsCategoryFrame(catKey)
+    if not settingsScroll then return nil end
+    for _, c in ipairs(settingsScroll:GetChildren()) do
+        if c:IsA("Frame") and c.Name == "Cat__" .. catKey then return c end
+    end
+    return nil
+end
+
+local function animateToSettings(category)
+    if currentSettingsCategory == category then return end
+    currentSettingsCategory = category
+    if mainMenuView and settingsView then
+        settingsView.Visible = true
+        settingsView.Position = UDim2.fromOffset(tabPanel.AbsoluteSize.X, 0)
+        TweenService:Create(mainMenuView, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(-tabPanel.AbsoluteSize.X, 0) }):Play()
+        TweenService:Create(settingsView, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(0, 0) }):Play()
+    end
+    if settingsTitleLabel then
+        settingsTitleLabel.Text = "  " .. (Languages[config.language] and (Languages[config.language][category] or category) or category)
+    end
+    for _, c in ipairs(settingsScroll and settingsScroll:GetChildren() or {}) do
+        if c:IsA("Frame") and c.Name:sub(1, 5) == "Cat__" then
+            c.Visible = c.Name == "Cat__" .. category
+        end
+    end
+end
+
+local function animateToMain()
+    if currentSettingsCategory == nil then return end
+    currentSettingsCategory = nil
+    if mainMenuView and settingsView then
+        TweenService:Create(mainMenuView, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(0, 0) }):Play()
+        local t = TweenService:Create(settingsView, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(tabPanel.AbsoluteSize.X, 0) })
+        t:Play()
+        t.Completed:Connect(function()
+            if currentSettingsCategory == nil then settingsView.Visible = false end
+        end)
+    end
+end
 
 local function setMenuVisible(visible)
     if not tabPanel then return end
@@ -1092,62 +1092,16 @@ local function setMenuVisible(visible)
     if settingsWindow then settingsWindow.Visible = visible and settingsVisible end
     if fastFlagWindow then fastFlagWindow.Visible = visible and fastFlagWindow.Visible end
     if profilesWindow then profilesWindow.Visible = visible and profilesWindow.Visible end
-    for _, card in pairs(categoryFrames) do
-        if card and card.Parent then card.Visible = visible and categoryStates[card.Name] and currentSettingsCategory == nil end
-    end
-    if mainView then mainView.Visible = currentSettingsCategory == nil end
-    if settingsView then settingsView.Visible = currentSettingsCategory ~= nil end
     local sf = screenGui:FindFirstChild("SearchBar")
     if sf then sf.Visible = visible and currentSettingsCategory == nil end
     if visible then
         disableOtherScreenGuis()
-        local sb = sf and sf:FindFirstChildOfClass("TextBox")
-        if sb and sb.Text ~= "" and filterButtons and currentSettingsCategory == nil then filterButtons(sb.Text) end
         if not was then playMenuSound(true) end
     else
         restoreOtherScreenGuis()
         if was then playMenuSound(false) end
     end
     updateBlur()
-end
-
-local function showSettingsCategory(cat)
-    currentSettingsCategory = cat
-    for _, card in pairs(categoryFrames) do
-        if card and card.Parent then card.Visible = false end
-    end
-    if mainView then mainView.Visible = false end
-    if settingsView then
-        settingsView.Visible = true
-        if settingsHeaderLabel then
-            settingsHeaderLabel.Text = "  " .. (cat or "")
-        end
-        if filterSettingsButtons then filterSettingsButtons(cat) end
-    end
-    local sf = screenGui:FindFirstChild("SearchBar")
-    if sf then sf.Visible = false end
-end
-
-local function hideSettingsCategory()
-    currentSettingsCategory = nil
-    if settingsView then settingsView.Visible = false end
-    if mainView then mainView.Visible = true end
-    for _, card in pairs(categoryFrames) do
-        if card and card.Parent then card.Visible = categoryStates[card.Name] end
-    end
-    local sf = screenGui:FindFirstChild("SearchBar")
-    if sf then sf.Visible = true end
-end
-
-local settingsCategories = {} -- name -> {builder = fn, order = num}
-local settingsCategoryButtons = {}
-local function registerSettingsCategory(name, order, builder)
-    settingsCategories[name] = { builder = builder, order = order }
-    table.sort(settingsCategoryButtons, function(a, b) return (a.order or 0) < (b.order or 0) end)
-end
-
-local function buildSettingsWindowContent()
-    -- replaces old createSettingsWindow with category picker panel
 end
 
 local function createSettingsWindow()
@@ -1161,7 +1115,7 @@ local function createSettingsWindow()
     w.Name = "SettingsWindow"
     w.BackgroundColor3 = Colors.Panel
     w.BorderSizePixel = 0
-    w.Size = UDim2.fromOffset(220, 260)
+    w.Size = UDim2.fromOffset(200, 240)
     w.Position = UDim2.fromOffset(wx, wy)
     w.ClipsDescendants = true
     w.ZIndex = 40000
@@ -1227,110 +1181,23 @@ local function createSettingsWindow()
             playButtonSound()
             w.Visible = false
             settingsVisible = false
-            showSettingsCategory(cat.key)
+            animateToSettings(cat.key)
         end)
     end
     settingsWindow = w
     settingsVisible = true
 end
 
-local function buildSettingsView()
-    settingsView = Instance.new("Frame")
-    settingsView.Name = "SettingsView"
-    settingsView.BackgroundColor3 = Colors.Panel
-    settingsView.BorderSizePixel = 0
-    settingsView.Size = UDim2.fromOffset(210, 560)
-    settingsView.Position = tabPanel.Position
-    settingsView.ClipsDescendants = true
-    settingsView.ZIndex = 20000
-    settingsView.Visible = false
-    settingsView.Parent = screenGui
-    local sh = Instance.new("TextButton")
-    sh.AutoButtonColor = false
-    sh.BackgroundColor3 = Colors.Panel
-    sh.BorderSizePixel = 0
-    sh.Size = UDim2.new(1, 0, 0, 46)
-    sh.Text = ""
-    sh.ZIndex = 20001
-    sh.Parent = settingsView
-    settingsHeaderLabel = Instance.new("TextLabel")
-    settingsHeaderLabel.BackgroundTransparency = 1
-    settingsHeaderLabel.Position = UDim2.fromOffset(0, 0)
-    settingsHeaderLabel.Size = UDim2.new(1, -50, 1, 0)
-    settingsHeaderLabel.FontFace = UIFont; settingsHeaderLabel.TextSize = 17
-    settingsHeaderLabel.TextColor3 = Colors.Text
-    settingsHeaderLabel.TextXAlignment = Enum.TextXAlignment.Left
-    settingsHeaderLabel.Text = ""
-    settingsHeaderLabel.ZIndex = 20002
-    settingsHeaderLabel.Parent = sh
-    local back = Instance.new("TextButton")
-    back.AutoButtonColor = false
-    back.BackgroundTransparency = 1
-    back.AnchorPoint = Vector2.new(1, 0)
-    back.Position = UDim2.new(1, -6, 0, 0)
-    back.Size = UDim2.fromOffset(40, 46)
-    back.FontFace = UIFont; back.TextSize = 22
-    back.TextColor3 = Colors.MutedText
-    back.Text = "←"
-    back.ZIndex = 20003
-    back.Parent = sh
-    back.MouseEnter:Connect(function() back.TextColor3 = Colors.Text end)
-    back.MouseLeave:Connect(function() back.TextColor3 = Colors.MutedText end)
-    back.MouseButton1Click:Connect(function() playButtonSound(); hideSettingsCategory() end)
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Name = "Scroll"
-    scroll.BackgroundTransparency = 1
-    scroll.BorderSizePixel = 0
-    scroll.Position = UDim2.fromOffset(8, 54)
-    scroll.Size = UDim2.new(1, -16, 1, -62)
-    scroll.ScrollBarThickness = 4
-    scroll.ScrollBarImageColor3 = Colors.Accent
-    scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    scroll.CanvasSize = UDim2.fromOffset(0, 0)
-    scroll.ZIndex = 20004
-    scroll.Parent = settingsView
-    local sl = Instance.new("UIListLayout")
-    sl.SortOrder = Enum.SortOrder.LayoutOrder
-    sl.Padding = UDim.new(0, 10)
-    sl.Parent = scroll
-    settingsView._scroll = scroll
-    filterSettingsButtons = function(catKey)
-        for _, c in ipairs(scroll:GetChildren()) do
-            if c:IsA("Frame") and c.Name:sub(1, 5) == "Cat__" then
-                c.Visible = c.Name == "Cat__" .. catKey
-            end
-        end
-    end
-end
-
-local function makeSettingsCategoryFrame(parent, catKey, order)
-    local frame = Instance.new("Frame")
-    frame.Name = "Cat__" .. catKey
-    frame.BackgroundTransparency = 1
-    frame.Size = UDim2.new(1, 0, 0, 0)
-    frame.AutomaticSize = Enum.AutomaticSize.Y
-    frame.LayoutOrder = order
-    frame.Visible = false
-    frame.Parent = parent
-    local l = Instance.new("UIListLayout")
-    l.SortOrder = Enum.SortOrder.LayoutOrder
-    l.Padding = UDim.new(0, 10)
-    l.Parent = frame
-    return frame
-end
-
 local function addSettingsLabel(parent, text, order)
     local l = Instance.new("TextLabel")
     l.BackgroundTransparency = 1
     l.Size = UDim2.new(1, 0, 0, 22)
-    l.FontFace = UIFont; l.TextSize = 17
+    l.FontFace = UIFont; l.TextSize = 16
     l.TextColor3 = Colors.Text
     l.TextXAlignment = Enum.TextXAlignment.Left
     l.Text = text
     l.LayoutOrder = order
     l.Parent = parent
-    return l
 end
 local function addSettingsCheck(parent, labelText, getter, setter, order, tip)
     local f = Instance.new("Frame")
@@ -1380,7 +1247,7 @@ local function addSettingsTextRow(parent, labelText, getter, setter, order, ph)
     tb.BorderSizePixel = 0
     tb.AnchorPoint = Vector2.new(1, 0.5)
     tb.Position = UDim2.new(1, 0, 0.5, 0)
-    tb.Size = UDim2.fromOffset(140, 28)
+    tb.Size = UDim2.fromOffset(110, 28)
     tb.FontFace = UIFont; tb.TextSize = 14
     tb.TextColor3 = Colors.Text
     tb.PlaceholderText = ph or ""
@@ -1431,8 +1298,7 @@ local function addSettingsVolSlider(parent, order)
     local function upd(p)
         p = math.clamp(p, 0, 1)
         config.soundVolume = p
-        soundObj.Volume = p
-        menuSoundObj.Volume = p
+        soundObj.Volume = p; menuSoundObj.Volume = p
         fill.Size = UDim2.new(p, 0, 1, 0)
         knob.Position = UDim2.new(p, 0, 0.5, 0)
         l.Text = L("volume") .. " (" .. math.floor(p * 100) .. "%)"
@@ -1460,7 +1326,7 @@ local function addSettingsBtn(parent, labelText, onClick, order, primary)
     b.AutoButtonColor = false
     b.BackgroundColor3 = primary and Colors.Accent or Colors.Action
     b.BorderSizePixel = 0
-    b.Size = UDim2.new(1, 0, 0, 38)
+    b.Size = UDim2.new(1, 0, 0, 36)
     b.FontFace = UIFont; b.TextSize = 15
     b.TextColor3 = Colors.Text
     b.Text = labelText
@@ -1471,17 +1337,30 @@ local function addSettingsBtn(parent, labelText, onClick, order, primary)
     b.MouseButton1Click:Connect(function() playButtonSound(); onClick() end)
     return b
 end
+local function makeSettingsCategoryFrame(parent, catKey, order)
+    local frame = Instance.new("Frame")
+    frame.Name = "Cat__" .. catKey
+    frame.BackgroundTransparency = 1
+    frame.Size = UDim2.new(1, 0, 0, 0)
+    frame.AutomaticSize = Enum.AutomaticSize.Y
+    frame.LayoutOrder = order
+    frame.Visible = false
+    frame.Parent = parent
+    local l = Instance.new("UIListLayout")
+    l.SortOrder = Enum.SortOrder.LayoutOrder
+    l.Padding = UDim.new(0, 10)
+    l.Parent = frame
+    return frame
+end
 
 local function buildSettingsContent()
-    local scroll = settingsView._scroll
-    local guiFrame = makeSettingsCategoryFrame(scroll, "gui", 1)
-    local soundsFrame = makeSettingsCategoryFrame(scroll, "sounds", 2)
-    local managersFrame = makeSettingsCategoryFrame(scroll, "managers", 3)
-    local miscFrame = makeSettingsCategoryFrame(scroll, "misc", 4)
-    -- GUI
+    local guiFrame = makeSettingsCategoryFrame(settingsScroll, "gui", 1)
+    local soundsFrame = makeSettingsCategoryFrame(settingsScroll, "sounds", 2)
+    local managersFrame = makeSettingsCategoryFrame(settingsScroll, "managers", 3)
+    local miscFrame = makeSettingsCategoryFrame(settingsScroll, "misc", 4)
+
     addSettingsLabel(guiFrame, L("language"), 1)
-    local langCurrent = config.language
-    local langContainer, _, langOpts = makeSearchableDropdown(guiFrame, 2, L("language"), LanguageNames, langCurrent, function(opt)
+    makeSearchableDropdown(guiFrame, 2, L("language"), LanguageNames, config.language, function(opt)
         config.language = opt
         saveConfig()
         notifyEnabled("Language set to " .. opt)
@@ -1489,57 +1368,478 @@ local function buildSettingsContent()
     addSettingsLabel(guiFrame, L("visual"), 3)
     addSettingsCheck(guiFrame, L("blur"), function() return getSetting("noxvape", "blur", "enabled", false) end, function(v)
         setSetting("noxvape", "blur", "enabled", v); updateBlur()
-    end, 4, "Blur background when GUI open")
+    end, 4)
     addSettingsLabel(guiFrame, L("menu_color"), 5)
-    local currentMenuColor = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
-    buildColorPickerRow(guiFrame, 6, currentMenuColor, function(c) applyMenuColorToGui(c) end, L("accent"), "__menuAccent", false)
+    local cmc = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
+    buildColorPickerRow(guiFrame, 6, cmc, function(c) applyMenuColorToGui(c) end, L("accent"), "__menuAccent", false)
     addSettingsBtn(guiFrame, L("revert_default"), function()
         applyMenuColorToGui(DEFAULT_MENU_COLOR)
         notifyEnabled("Menu color reset to default")
     end, 7, false)
     addSettingsLabel(guiFrame, L("text_color"), 8)
-    local currentTextColor = Color3.new(config.textColor.r, config.textColor.g, config.textColor.b)
-    buildColorPickerRow(guiFrame, 9, currentTextColor, function(c) applyTextColorToGui(c) end, L("text_color"), "__menuText", false)
+    local ctc = Color3.new(config.textColor.r, config.textColor.g, config.textColor.b)
+    buildColorPickerRow(guiFrame, 9, ctc, function(c) applyTextColorToGui(c) end, L("text_color"), "__menuText", false)
     addSettingsBtn(guiFrame, L("revert_text"), function()
         applyTextColorToGui(DEFAULT_TEXT_COLOR)
         notifyEnabled("Text color reset to default")
     end, 10, false)
-    -- Sounds
+
     addSettingsLabel(soundsFrame, L("button_sounds"), 1)
-    addSettingsCheck(soundsFrame, L("button_sounds"), function() return config.guiSounds end, function(v) config.guiSounds = v end, 2, "Play sounds on button clicks")
+    addSettingsCheck(soundsFrame, L("button_sounds"), function() return config.guiSounds end, function(v) config.guiSounds = v end, 2)
     addSettingsTextRow(soundsFrame, L("sound_id"), function() return config.soundId end, function(v) config.soundId = v end, 3, "0")
     addSettingsLabel(soundsFrame, L("open_close"), 4)
-    addSettingsCheck(soundsFrame, L("open_close"), function() return config.menuSounds end, function(v) config.menuSounds = v end, 5, "Play on menu open/close")
+    addSettingsCheck(soundsFrame, L("open_close"), function() return config.menuSounds end, function(v) config.menuSounds = v end, 5)
     addSettingsTextRow(soundsFrame, L("open_id"), function() return config.openSoundId end, function(v) config.openSoundId = v end, 6, "0")
     addSettingsTextRow(soundsFrame, L("close_id"), function() return config.closeSoundId end, function(v) config.closeSoundId = v end, 7, "0")
     addSettingsVolSlider(soundsFrame, 8)
-    -- Managers
+
     addSettingsLabel(managersFrame, L("managers"), 1)
     addSettingsBtn(managersFrame, L("fastflag"), function() createFastFlagWindow() end, 2, false)
     addSettingsBtn(managersFrame, L("profiles"), function() createProfilesWindow() end, 3, false)
-    -- Misc
+
     addSettingsLabel(miscFrame, L("misc"), 1)
-    addSettingsBtn(miscFrame, L("clear_config"), function()
-        clearConfigAndRestart()
-    end, 2, false)
+    addSettingsBtn(miscFrame, L("clear_config"), function() clearConfigAndRestart() end, 2, false)
     addSettingsBtn(miscFrame, L("self_destruct"), function() selfDestruct() end, 3, false)
+end
+
+local function createFastFlagWindow()
+    if fastFlagWindow then
+        fastFlagWindow.Visible = not fastFlagWindow.Visible
+        return
+    end
+    local wx, wy = getPosition("fastFlagWindow", 340, 100)
+    local w = Instance.new("Frame")
+    w.Name = "FastFlagWindow"
+    w.BackgroundColor3 = Colors.Panel
+    w.BorderSizePixel = 0
+    w.Size = UDim2.fromOffset(360, 500)
+    w.Position = UDim2.fromOffset(wx, wy)
+    w.ClipsDescendants = true
+    w.ZIndex = 45000
+    w.Parent = screenGui
+    fastFlagWindow = w
+    local h = Instance.new("TextButton")
+    h.AutoButtonColor = false
+    h.BackgroundColor3 = Colors.Panel
+    h.BorderSizePixel = 0
+    h.Size = UDim2.new(1, 0, 0, 40)
+    h.FontFace = UIFont; h.TextSize = 18
+    h.TextColor3 = Colors.Text
+    h.TextXAlignment = Enum.TextXAlignment.Left
+    h.Text = "  " .. L("fastflag")
+    h.ZIndex = 45001
+    h.Parent = w
+    local cb = Instance.new("TextButton")
+    cb.AutoButtonColor = false
+    cb.BackgroundTransparency = 1
+    cb.Size = UDim2.fromOffset(40, 40)
+    cb.AnchorPoint = Vector2.new(1, 0)
+    cb.Position = UDim2.new(1, 0, 0, 0)
+    cb.FontFace = UIFont; cb.TextSize = 20
+    cb.TextColor3 = Colors.MutedText
+    cb.Text = "X"
+    cb.ZIndex = 45002
+    cb.Parent = h
+    cb.MouseButton1Click:Connect(function() w.Visible = false end)
+    makeDraggable(w, h, "fastFlagWindow", false)
+    local content = Instance.new("ScrollingFrame")
+    content.BackgroundTransparency = 1
+    content.BorderSizePixel = 0
+    content.Position = UDim2.fromOffset(12, 48)
+    content.Size = UDim2.new(1, -24, 1, -60)
+    content.ScrollBarThickness = 4
+    content.ScrollBarImageColor3 = Colors.Accent
+    content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    content.CanvasSize = UDim2.fromOffset(0, 0)
+    content.Parent = w
+    local cl = Instance.new("UIListLayout")
+    cl.SortOrder = Enum.SortOrder.LayoutOrder
+    cl.Padding = UDim.new(0, 4)
+    cl.Parent = content
+    local function refresh()
+        for _, c in ipairs(content:GetChildren()) do
+            if c:IsA("Frame") then c:Destroy() end
+        end
+        local folder = findLoaderFolder()
+        if not folder then
+            local e = Instance.new("TextLabel")
+            e.BackgroundTransparency = 1
+            e.Size = UDim2.new(1, 0, 0, 40)
+            e.FontFace = UIFont; e.TextSize = 15
+            e.TextColor3 = Colors.MutedText
+            e.Text = "No '" .. FFLAGS_FOLDER_NAME .. "' folder found."
+            e.Parent = content
+            return
+        end
+        for i, entry in ipairs(getFlagsFromFolder(folder)) do
+            local row = Instance.new("Frame")
+            row.BackgroundColor3 = Colors.Setting
+            row.BorderSizePixel = 0
+            row.Size = UDim2.new(1, 0, 0, 36)
+            row.LayoutOrder = i
+            row.Parent = content
+            local nl = Instance.new("TextLabel")
+            nl.BackgroundTransparency = 1
+            nl.Position = UDim2.fromOffset(8, 0)
+            nl.Size = UDim2.new(1, -80, 1, 0)
+            nl.FontFace = UIFont; nl.TextSize = 14
+            nl.TextColor3 = Colors.Text
+            nl.TextXAlignment = Enum.TextXAlignment.Left
+            nl.TextTruncate = Enum.TextTruncate.AtEnd
+            nl.Text = entry.name
+            nl.Parent = row
+            local lb = Instance.new("TextButton")
+            lb.AutoButtonColor = false
+            lb.BackgroundColor3 = Colors.Action
+            lb.BorderSizePixel = 0
+            lb.AnchorPoint = Vector2.new(1, 0.5)
+            lb.Position = UDim2.new(1, -6, 0.5, 0)
+            lb.Size = UDim2.fromOffset(60, 26)
+            lb.FontFace = UIFont; lb.TextSize = 13
+            lb.TextColor3 = Colors.Text
+            lb.Text = L("load")
+            lb.Parent = row
+            lb.MouseButton1Click:Connect(function()
+                playButtonSound()
+                local n, err = applyFastFlags(entry.flags)
+                if err then notifyError("Failed: " .. err)
+                else notifyEnabled("Loaded " .. n .. " flags") end
+            end)
+        end
+    end
+    task.defer(refresh)
+end
+
+local function createProfilesWindow()
+    if profilesWindow then
+        profilesWindow.Visible = not profilesWindow.Visible
+        return
+    end
+    local wx, wy = getPosition("profilesWindow", 660, 100)
+    local w = Instance.new("Frame")
+    w.Name = "ProfilesWindow"
+    w.BackgroundColor3 = Colors.Panel
+    w.BorderSizePixel = 0
+    w.Size = UDim2.fromOffset(280, 400)
+    w.Position = UDim2.fromOffset(wx, wy)
+    w.ClipsDescendants = true
+    w.ZIndex = 46000
+    w.Parent = screenGui
+    profilesWindow = w
+    local h = Instance.new("TextButton")
+    h.AutoButtonColor = false
+    h.BackgroundColor3 = Colors.Panel
+    h.BorderSizePixel = 0
+    h.Size = UDim2.new(1, 0, 0, 40)
+    h.FontFace = UIFont; h.TextSize = 18
+    h.TextColor3 = Colors.Text
+    h.TextXAlignment = Enum.TextXAlignment.Left
+    h.Text = "  " .. L("profiles")
+    h.ZIndex = 46001
+    h.Parent = w
+    local cb = Instance.new("TextButton")
+    cb.AutoButtonColor = false
+    cb.BackgroundTransparency = 1
+    cb.Size = UDim2.fromOffset(40, 40)
+    cb.AnchorPoint = Vector2.new(1, 0)
+    cb.Position = UDim2.new(1, 0, 0, 0)
+    cb.FontFace = UIFont; cb.TextSize = 20
+    cb.TextColor3 = Colors.MutedText
+    cb.Text = "X"
+    cb.ZIndex = 46002
+    cb.Parent = h
+    cb.MouseButton1Click:Connect(function() w.Visible = false end)
+    makeDraggable(w, h, "profilesWindow", false)
+    local pl = Instance.new("ScrollingFrame")
+    pl.BackgroundTransparency = 1
+    pl.BorderSizePixel = 0
+    pl.Position = UDim2.fromOffset(12, 48)
+    pl.Size = UDim2.new(1, -24, 1, -60)
+    pl.ScrollBarThickness = 4
+    pl.ScrollBarImageColor3 = Colors.Accent
+    pl.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    pl.CanvasSize = UDim2.fromOffset(0, 0)
+    pl.Parent = w
+    local pll = Instance.new("UIListLayout")
+    pll.SortOrder = Enum.SortOrder.LayoutOrder
+    pll.Padding = UDim.new(0, 4)
+    pll.Parent = pl
+    local function refresh()
+        for _, c in ipairs(pl:GetChildren()) do
+            if c:IsA("Frame") then c:Destroy() end
+        end
+        for i, entry in ipairs(listProfiles()) do
+            local row = Instance.new("Frame")
+            row.BackgroundColor3 = Colors.Setting
+            row.BorderSizePixel = 0
+            row.Size = UDim2.new(1, 0, 0, 36)
+            row.LayoutOrder = i
+            row.Parent = pl
+            local nl = Instance.new("TextLabel")
+            nl.BackgroundTransparency = 1
+            nl.Position = UDim2.fromOffset(8, 0)
+            nl.Size = UDim2.new(1, -80, 1, 0)
+            nl.FontFace = UIFont; nl.TextSize = 14
+            nl.TextColor3 = Colors.Text
+            nl.TextXAlignment = Enum.TextXAlignment.Left
+            nl.TextTruncate = Enum.TextTruncate.AtEnd
+            nl.Text = entry.name
+            nl.Parent = row
+            local lb = Instance.new("TextButton")
+            lb.AutoButtonColor = false
+            lb.BackgroundColor3 = Colors.Accent
+            lb.BorderSizePixel = 0
+            lb.AnchorPoint = Vector2.new(1, 0.5)
+            lb.Position = UDim2.new(1, -6, 0.5, 0)
+            lb.Size = UDim2.fromOffset(60, 26)
+            lb.FontFace = UIFont; lb.TextSize = 13
+            lb.TextColor3 = Colors.Text
+            lb.Text = L("load")
+            lb.Parent = row
+            lb.MouseButton1Click:Connect(function()
+                playButtonSound()
+                local d = readProfile(entry.name)
+                if d and applyProfileData(d) then notifyEnabled("Loaded: " .. entry.name) end
+            end)
+        end
+    end
+    task.defer(refresh)
+end
+
+local function listProfiles()
+    if not canUseFiles() then return {} end
+    local list, seen = {}, {}
+    for _, rp in ipairs(listfilesSafe(PROFILES_FOLDER)) do
+        local norm = tostring(rp):gsub("\\", "/")
+        local name = norm:match("([^/]+)%.json$")
+        if name and not seen[name] then seen[name] = true; table.insert(list, { name = name, path = rp }) end
+    end
+    return list
+end
+local function readProfile(name)
+    if not canUseFiles() then return nil end
+    for _, p in ipairs({ PROFILES_FOLDER.."/"..name..".json", PROFILES_FOLDER.."\\"..name..".json", name..".json" }) do
+        if isfile(p) then
+            local ok, d = pcall(function() return HttpService:JSONDecode(readfile(p)) end)
+            if ok and type(d) == "table" then return d end
+        end
+    end
+    return nil
+end
+local function applyProfileData(data)
+    if type(data) ~= "table" then return false end
+    if type(data.features) == "table" then config.features = data.features end
+    if type(data.settings) == "table" then config.settings = data.settings end
+    if type(data.keybinds) == "table" then config.keybinds = data.keybinds end
+    if type(data.tabs) == "table" then config.tabs = data.tabs end
+    if type(data.menuColor) == "table" then
+        applyMenuColorToGui(Color3.new(data.menuColor.r, data.menuColor.g, data.menuColor.b))
+    end
+    if type(data.textColor) == "table" then
+        applyTextColorToGui(Color3.new(data.textColor.r, data.textColor.g, data.textColor.b))
+    end
+    if type(data.rainbowPickers) == "table" then config.rainbowPickers = data.rainbowPickers end
+    saveConfig()
+    return true
 end
 
 local function init()
     ensureFastFlagsFolder()
-    local root = Instance.new("Frame")
-    root.Name = "Root"
-    root.BackgroundTransparency = 1
-    root.Size = UDim2.fromScale(1, 1)
-    root.ZIndex = 10001
-    root.Parent = screenGui
+    local nx = tonumber(config.noxPosition.x) or 18
+    local ny = tonumber(config.noxPosition.y) or 75
+    tabPanel = Instance.new("Frame")
+    tabPanel.Name = "noxvape"
+    tabPanel.BackgroundColor3 = Colors.Panel
+    tabPanel.BorderSizePixel = 0
+    tabPanel.Size = UDim2.fromOffset(210, 560)
+    tabPanel.Position = UDim2.fromOffset(nx, ny)
+    tabPanel.ClipsDescendants = true
+    tabPanel.ZIndex = 20000
+    tabPanel.Parent = screenGui
 
-    mainView = Instance.new("Frame")
-    mainView.Name = "MainView"
-    mainView.BackgroundTransparency = 1
-    mainView.Size = UDim2.fromScale(1, 1)
-    mainView.ZIndex = 10002
-    mainView.Parent = screenGui
+    local th = Instance.new("TextButton")
+    th.Name = "Header"
+    th.AutoButtonColor = false
+    th.BackgroundColor3 = Colors.Panel
+    th.BorderSizePixel = 0
+    th.Size = UDim2.new(1, 0, 0, 46)
+    th.Text = ""
+    th.ZIndex = 20001
+    th.Parent = tabPanel
+    local logo = Instance.new("ImageLabel")
+    logo.BackgroundTransparency = 1
+    logo.AnchorPoint = Vector2.new(0.5, 0.5)
+    logo.Position = UDim2.fromScale(0.5, 0.5)
+    logo.Size = UDim2.fromScale(1.4, 1.4)
+    logo.ScaleType = Enum.ScaleType.Fit
+    logo.ZIndex = 20002
+    logo.Parent = th
+    task.spawn(function()
+        if type(request) == "function" and type(writefile) == "function" then
+            local need = true
+            if type(isfile) == "function" then need = not isfile(LOGO_FILE) end
+            if need then
+                pcall(function()
+                    local r = request({ Url = LOGO_URL, Method = "GET" })
+                    if r and r.Success and r.Body then writefile(LOGO_FILE, r.Body) end
+                end)
+            end
+        end
+        task.wait(0.12)
+        if type(isfile) == "function" and isfile(LOGO_FILE) then
+            local ok, a = pcall(function() return getCustomAsset(LOGO_FILE) end)
+            if ok and a then logo.Image = a end
+        end
+    end)
+    makeDraggable(tabPanel, th, "noxvape", true)
+
+    mainMenuView = Instance.new("Frame")
+    mainMenuView.Name = "MainMenuView"
+    mainMenuView.BackgroundTransparency = 1
+    mainMenuView.Position = UDim2.fromOffset(0, 0)
+    mainMenuView.Size = UDim2.new(1, 0, 1, 0)
+    mainMenuView.ZIndex = 20003
+    mainMenuView.Parent = tabPanel
+
+    settingsView = Instance.new("Frame")
+    settingsView.Name = "SettingsView"
+    settingsView.BackgroundTransparency = 1
+    settingsView.Position = UDim2.fromOffset(0, 0)
+    settingsView.Size = UDim2.new(1, 0, 1, 0)
+    settingsView.ZIndex = 20010
+    settingsView.Visible = false
+    settingsView.Parent = tabPanel
+    local sh = Instance.new("TextButton")
+    sh.AutoButtonColor = false
+    sh.BackgroundColor3 = Colors.Panel
+    sh.BorderSizePixel = 0
+    sh.Size = UDim2.new(1, 0, 0, 46)
+    sh.Text = ""
+    sh.ZIndex = 20011
+    sh.Parent = settingsView
+    settingsTitleLabel = Instance.new("TextLabel")
+    settingsTitleLabel.BackgroundTransparency = 1
+    settingsTitleLabel.Position = UDim2.fromOffset(0, 0)
+    settingsTitleLabel.Size = UDim2.new(1, -50, 1, 0)
+    settingsTitleLabel.FontFace = UIFont; settingsTitleLabel.TextSize = 17
+    settingsTitleLabel.TextColor3 = Colors.Text
+    settingsTitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    settingsTitleLabel.Text = ""
+    settingsTitleLabel.ZIndex = 20012
+    settingsTitleLabel.Parent = sh
+    local back = Instance.new("TextButton")
+    back.AutoButtonColor = false
+    back.BackgroundTransparency = 1
+    back.AnchorPoint = Vector2.new(1, 0)
+    back.Position = UDim2.new(1, -6, 0, 0)
+    back.Size = UDim2.fromOffset(40, 46)
+    back.FontFace = UIFont; back.TextSize = 22
+    back.TextColor3 = Colors.MutedText
+    back.Text = "←"
+    back.ZIndex = 20013
+    back.Parent = sh
+    back.MouseEnter:Connect(function() back.TextColor3 = Colors.Text end)
+    back.MouseLeave:Connect(function() back.TextColor3 = Colors.MutedText end)
+    back.MouseButton1Click:Connect(function() playButtonSound(); animateToMain() end)
+
+    settingsScroll = Instance.new("ScrollingFrame")
+    settingsScroll.Name = "Scroll"
+    settingsScroll.BackgroundTransparency = 1
+    settingsScroll.BorderSizePixel = 0
+    settingsScroll.Position = UDim2.fromOffset(8, 54)
+    settingsScroll.Size = UDim2.new(1, -16, 1, -62)
+    settingsScroll.ScrollBarThickness = 4
+    settingsScroll.ScrollBarImageColor3 = Colors.Accent
+    settingsScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    settingsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    settingsScroll.CanvasSize = UDim2.fromOffset(0, 0)
+    settingsScroll.ZIndex = 20014
+    settingsScroll.Parent = settingsView
+    local sl = Instance.new("UIListLayout")
+    sl.SortOrder = Enum.SortOrder.LayoutOrder
+    sl.Padding = UDim.new(0, 10)
+    sl.Parent = settingsScroll
+
+    buildSettingsContent()
+
+    local ts = Instance.new("Frame")
+    ts.BackgroundTransparency = 1
+    ts.Position = UDim2.fromOffset(8, 54)
+    ts.Size = UDim2.new(1, -16, 0, 450)
+    ts.ZIndex = 20004
+    ts.Parent = mainMenuView
+    local tl = Instance.new("UIListLayout")
+    tl.SortOrder = Enum.SortOrder.LayoutOrder
+    tl.Padding = UDim.new(0, 3)
+    tl.Parent = ts
+    for i, catDef in ipairs(_categories) do
+        local cn = catDef.name
+        local tb = Instance.new("TextButton")
+        tb.Name = cn
+        tb.LayoutOrder = i
+        tb.AutoButtonColor = false
+        tb.BackgroundColor3 = Colors.Action
+        tb.BorderSizePixel = 0
+        tb.Size = UDim2.new(1, 0, 0, 36)
+        tb.FontFace = UIFont; tb.TextSize = 17
+        tb.TextColor3 = Colors.Text
+        tb.Text = cn
+        tb.TextXAlignment = Enum.TextXAlignment.Center
+        tb.ZIndex = 20005
+        tb.Parent = ts
+        tb.MouseEnter:Connect(function() tw(tb, { BackgroundColor3 = Colors.ActionHover }, 0.08) end)
+        tb.MouseLeave:Connect(function() tw(tb, { BackgroundColor3 = Colors.Action }, 0.08) end)
+        tb.MouseButton1Click:Connect(function()
+            playButtonSound()
+            local c = categoryFrames[cn]
+            if not c or not c.Parent then return end
+            categoryStates[cn] = not categoryStates[cn]
+            c.Visible = categoryStates[cn]
+            config.tabs[cn] = categoryStates[cn]
+            saveConfig()
+        end)
+        addTooltip(tb, "Toggle " .. cn .. " tab")
+    end
+    local sc = Instance.new("Frame")
+    sc.BackgroundTransparency = 1
+    sc.Position = UDim2.new(1, -48, 1, -48)
+    sc.Size = UDim2.fromOffset(40, 40)
+    sc.ZIndex = 20015
+    sc.Parent = mainMenuView
+    local sb = Instance.new("TextButton")
+    sb.AutoButtonColor = false
+    sb.BackgroundTransparency = 1
+    sb.BorderSizePixel = 0
+    sb.Size = UDim2.fromScale(1, 1)
+    sb.Text = ""
+    sb.ZIndex = 20016
+    sb.Parent = sc
+    local si = Instance.new("ImageLabel")
+    si.BackgroundTransparency = 1
+    si.AnchorPoint = Vector2.new(0.5, 0.5)
+    si.Position = UDim2.fromScale(0.5, 0.5)
+    si.Size = UDim2.fromScale(1, 1)
+    si.ScaleType = Enum.ScaleType.Fit
+    si.ImageColor3 = Color3.fromRGB(255, 255, 255)
+    si.ZIndex = 20017
+    si.Parent = sb
+    task.spawn(function()
+        if type(request) == "function" and type(writefile) == "function" then
+            pcall(function()
+                local r = request({ Url = SETTINGS_ICON_URL, Method = "GET" })
+                if r and r.Success and r.Body then
+                    writefile("nox_settings_icon.png", r.Body)
+                    local a = getCustomAsset("nox_settings_icon.png")
+                    if a then si.Image = a end
+                end
+            end)
+        end
+    end)
+    if si.Image == "" then si.Image = "rbxassetid://6034654127" end
+    sb.MouseEnter:Connect(function() tw(si, { ImageColor3 = Color3.fromRGB(180, 180, 180) }, 0.1) end)
+    sb.MouseLeave:Connect(function() tw(si, { ImageColor3 = Color3.fromRGB(255, 255, 255) }, 0.1) end)
+    addTooltip(sb, "Open GUI settings")
+    sb.MouseButton1Click:Connect(function() playButtonSound(); createSettingsWindow() end)
 
     for ci, catDef in ipairs(_categories) do
         local catName = catDef.name
@@ -1555,7 +1855,7 @@ local function init()
         card.Visible = config.tabs[catName] == true
         card.ClipsDescendants = true
         card.ZIndex = 11000 + ci
-        card.Parent = mainView
+        card.Parent = screenGui
         categoryFrames[catName] = card
         categoryStates[catName] = card.Visible
         local hdr = Instance.new("TextButton")
@@ -1648,31 +1948,23 @@ local function init()
             settingsFrame.ZIndex = 11105 + ci
             settingsFrame.Parent = wrapper
             local sp2 = Instance.new("UIPadding")
-            sp2.PaddingTop = UDim.new(0, 6)
-            sp2.PaddingBottom = UDim.new(0, 6)
-            sp2.PaddingLeft = UDim.new(0, 8)
-            sp2.PaddingRight = UDim.new(0, 8)
+            sp2.PaddingTop = UDim.new(0, 6); sp2.PaddingBottom = UDim.new(0, 6)
+            sp2.PaddingLeft = UDim.new(0, 8); sp2.PaddingRight = UDim.new(0, 8)
             sp2.Parent = settingsFrame
-            local sl = Instance.new("UIListLayout")
-            sl.SortOrder = Enum.SortOrder.LayoutOrder
-            sl.Padding = UDim.new(0, 4)
-            sl.Parent = settingsFrame
+            local sl2 = Instance.new("UIListLayout")
+            sl2.SortOrder = Enum.SortOrder.LayoutOrder
+            sl2.Padding = UDim.new(0, 4)
+            sl2.Parent = settingsFrame
             local hovering = false
             local function refreshColor()
-                if isToggle then
-                    button.BackgroundColor3 = currentState and Colors.Accent or Colors.Action
-                else
-                    button.BackgroundColor3 = hovering and Colors.ActionHover or Colors.Action
-                end
+                if isToggle then button.BackgroundColor3 = currentState and Colors.Accent or Colors.Action
+                else button.BackgroundColor3 = hovering and Colors.ActionHover or Colors.Action end
             end
             button.MouseEnter:Connect(function() hovering = true; refreshColor() end)
             button.MouseLeave:Connect(function() hovering = false; refreshColor() end)
             addTooltip(button, description)
             local function performToggle()
-                if not isToggle then
-                    pcall(action)
-                    return
-                end
+                if not isToggle then pcall(action); return end
                 local newState = not currentState
                 local ok, result = pcall(action, newState)
                 if ok and result ~= false then
@@ -1683,9 +1975,7 @@ local function init()
                     else notifyWarning(itemName .. " " .. L("toggled_off")) end
                     fireFeatureToggle(catName, itemName, currentState)
                     saveConfig()
-                else
-                    refreshColor()
-                end
+                else refreshColor() end
             end
             button.MouseButton1Click:Connect(function() playButtonSound(); performToggle() end)
             button.MouseButton2Click:Connect(function()
@@ -1714,8 +2004,6 @@ local function init()
             kbb.Size = UDim2.fromOffset(96, 28)
             kbb.FontFace = UIFont; kbb.TextSize = 15
             kbb.TextColor3 = Colors.Text
-            kbb.TextXAlignment = Enum.TextXAlignment.Center
-            kbb.TextYAlignment = Enum.TextYAlignment.Center
             kbb.Text = getKeybind(catName, itemName) or L("none")
             kbb.Parent = kbr
             kbb.MouseButton1Click:Connect(function()
@@ -1739,8 +2027,7 @@ local function init()
                         local mn = tonumber(setting.min) or 0
                         local mx = tonumber(setting.max) or 100
                         if mx < mn then mn, mx = mx, mn end
-                        local df = tonumber(setting.default) or mn
-                        df = math.clamp(df, mn, mx)
+                        local df = math.clamp(tonumber(setting.default) or mn, mn, mx)
                         local step = tonumber(setting.step) or 1
                         if step <= 0 then step = 1 end
                         local current = tonumber(getSetting(catName, itemName, sk, df)) or df
@@ -1769,19 +2056,19 @@ local function init()
                         l.TextXAlignment = Enum.TextXAlignment.Left
                         l.Text = sn .. " (" .. fmt(current) .. ")"
                         l.Parent = f
-                        local sb = Instance.new("Frame")
-                        sb.BackgroundColor3 = Colors.ToggleOff
-                        sb.BorderSizePixel = 0
-                        sb.Position = UDim2.fromOffset(0, 24)
-                        sb.Size = UDim2.new(1, 0, 0, 14)
-                        sb.Parent = f
+                        local sb2 = Instance.new("Frame")
+                        sb2.BackgroundColor3 = Colors.ToggleOff
+                        sb2.BorderSizePixel = 0
+                        sb2.Position = UDim2.fromOffset(0, 24)
+                        sb2.Size = UDim2.new(1, 0, 0, 14)
+                        sb2.Parent = f
                         local range = mx - mn
                         local pct = range == 0 and 0 or math.clamp((current - mn) / range, 0, 1)
                         local fill = Instance.new("Frame")
                         fill.BackgroundColor3 = Colors.Accent
                         fill.BorderSizePixel = 0
                         fill.Size = UDim2.new(pct, 0, 1, 0)
-                        fill.Parent = sb
+                        fill.Parent = sb2
                         local knob = Instance.new("TextButton")
                         knob.AutoButtonColor = false
                         knob.BackgroundColor3 = Colors.Accent
@@ -1790,7 +2077,7 @@ local function init()
                         knob.Position = UDim2.new(pct, 0, 0.5, 0)
                         knob.Size = UDim2.fromOffset(12, 16)
                         knob.Text = ""
-                        knob.Parent = sb
+                        knob.Parent = sb2
                         local drg = false
                         local function upd(v)
                             v = rTS(v)
@@ -1802,23 +2089,23 @@ local function init()
                             safeCall(setting.onChanged or setting.action, v)
                         end
                         knob.MouseButton1Down:Connect(function() drg = true end)
-                        sb.InputBegan:Connect(function(input)
+                        sb2.InputBegan:Connect(function(input)
                             if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
                             drg = true
-                            local wdt = sb.AbsoluteSize.X
+                            local wdt = sb2.AbsoluteSize.X
                             if wdt > 0 then
                                 local mp = UserInputService:GetMouseLocation()
-                                upd(mn + math.clamp((mp.X - sb.AbsolutePosition.X) / wdt, 0, 1) * range)
+                                upd(mn + math.clamp((mp.X - sb2.AbsolutePosition.X) / wdt, 0, 1) * range)
                             end
                         end)
-                        local sc
-                        sc = UserInputService.InputChanged:Connect(function(input)
+                        local sc2
+                        sc2 = UserInputService.InputChanged:Connect(function(input)
                             if not drg or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
-                            if not sb.Parent then if sc then sc:Disconnect() end return end
-                            local wdt = sb.AbsoluteSize.X
+                            if not sb2.Parent then if sc2 then sc2:Disconnect() end return end
+                            local wdt = sb2.AbsoluteSize.X
                             if wdt <= 0 then return end
                             local mp = UserInputService:GetMouseLocation()
-                            upd(mn + math.clamp((mp.X - sb.AbsolutePosition.X) / wdt, 0, 1) * range)
+                            upd(mn + math.clamp((mp.X - sb2.AbsolutePosition.X) / wdt, 0, 1) * range)
                         end)
                         UserInputService.InputEnded:Connect(function(input)
                             if input.UserInputType == Enum.UserInputType.MouseButton1 then drg = false end
@@ -1869,8 +2156,7 @@ local function init()
                         ck.MouseEnter:Connect(function() ck.BackgroundColor3 = cur and Colors.ToggleOnHover or Colors.ToggleOffHover end)
                         ck.MouseLeave:Connect(function() upd() end)
                         ck.MouseButton1Click:Connect(function()
-                            cur = not cur
-                            upd()
+                            cur = not cur; upd()
                             setSetting(catName, itemName, sk, cur)
                             safeCall(setting.onChanged or setting.action, cur)
                         end)
@@ -1893,7 +2179,7 @@ local function init()
                         tb.BorderSizePixel = 0
                         tb.AnchorPoint = Vector2.new(1, 0.5)
                         tb.Position = UDim2.new(1, 0, 0.5, 0)
-                        tb.Size = UDim2.fromOffset(140, 28)
+                        tb.Size = UDim2.fromOffset(110, 28)
                         tb.FontFace = UIFont; tb.TextSize = 14
                         tb.TextColor3 = Colors.Text
                         tb.Text = tostring(getSetting(catName, itemName, sk, setting.default or ""))
@@ -1908,12 +2194,8 @@ local function init()
             end
             buttonData[catName] = buttonData[catName] or {}
             buttonData[catName][itemName] = {
-                button = button,
-                wrapper = wrapper,
-                settings = settingsFrame,
-                isToggle = isToggle,
-                keybindButton = kbb,
-                action = action,
+                button = button, wrapper = wrapper, settings = settingsFrame,
+                isToggle = isToggle, keybindButton = kbb, action = action,
                 getState = function() return currentState end,
                 toggle = performToggle,
                 setState = function(state, skipSave)
@@ -1928,139 +2210,12 @@ local function init()
                 if not ok or result == false then
                     currentState = false
                     config.features[catName][itemName] = false
-                    refreshColor()
-                    notifyWarning(itemName .. " disabled (condition not met)")
-                    saveConfig()
+                    refreshColor(); saveConfig()
                 end
             end
         end
     end
-    local nx = tonumber(config.noxPosition.x) or 18
-    local ny = tonumber(config.noxPosition.y) or 75
-    tabPanel = Instance.new("Frame")
-    tabPanel.Name = "noxvape"
-    tabPanel.BackgroundColor3 = Colors.Panel
-    tabPanel.BorderSizePixel = 0
-    tabPanel.Size = UDim2.fromOffset(210, 560)
-    tabPanel.Position = UDim2.fromOffset(nx, ny)
-    tabPanel.ClipsDescendants = true
-    tabPanel.ZIndex = 20000
-    tabPanel.Parent = screenGui
-    local th = Instance.new("TextButton")
-    th.Name = "Header"
-    th.AutoButtonColor = false
-    th.BackgroundColor3 = Colors.Panel
-    th.BorderSizePixel = 0
-    th.Size = UDim2.new(1, 0, 0, 46)
-    th.Text = ""
-    th.ZIndex = 20001
-    th.Parent = tabPanel
-    local logo = Instance.new("ImageLabel")
-    logo.BackgroundTransparency = 1
-    logo.AnchorPoint = Vector2.new(0.5, 0.5)
-    logo.Position = UDim2.fromScale(0.5, 0.5)
-    logo.Size = UDim2.fromScale(1.4, 1.4)
-    logo.ScaleType = Enum.ScaleType.Fit
-    logo.ZIndex = 20002
-    logo.Parent = th
-    task.spawn(function()
-        if type(request) == "function" and type(writefile) == "function" then
-            local need = true
-            if type(isfile) == "function" then need = not isfile(LOGO_FILE) end
-            if need then
-                pcall(function()
-                    local r = request({ Url = LOGO_URL, Method = "GET" })
-                    if r and r.Success and r.Body then writefile(LOGO_FILE, r.Body) end
-                end)
-            end
-        end
-        task.wait(0.12)
-        if type(isfile) == "function" and isfile(LOGO_FILE) then
-            local ok, a = pcall(function() return getCustomAsset(LOGO_FILE) end)
-            if ok and a then logo.Image = a end
-        end
-    end)
-    makeDraggable(tabPanel, th, "noxvape", true)
-    local ts = Instance.new("Frame")
-    ts.BackgroundTransparency = 1
-    ts.Position = UDim2.fromOffset(8, 54)
-    ts.Size = UDim2.new(1, -16, 0, 450)
-    ts.ZIndex = 20004
-    ts.Parent = tabPanel
-    local tl = Instance.new("UIListLayout")
-    tl.SortOrder = Enum.SortOrder.LayoutOrder
-    tl.Padding = UDim.new(0, 3)
-    tl.Parent = ts
-    for i, catDef in ipairs(_categories) do
-        local cn = catDef.name
-        local tb = Instance.new("TextButton")
-        tb.Name = cn
-        tb.LayoutOrder = i
-        tb.AutoButtonColor = false
-        tb.BackgroundColor3 = Colors.Action
-        tb.BorderSizePixel = 0
-        tb.Size = UDim2.new(1, 0, 0, 36)
-        tb.FontFace = UIFont; tb.TextSize = 17
-        tb.TextColor3 = Colors.Text
-        tb.Text = cn
-        tb.TextXAlignment = Enum.TextXAlignment.Center
-        tb.ZIndex = 20005
-        tb.Parent = ts
-        tb.MouseEnter:Connect(function() tw(tb, { BackgroundColor3 = Colors.ActionHover }, 0.08) end)
-        tb.MouseLeave:Connect(function() tw(tb, { BackgroundColor3 = Colors.Action }, 0.08) end)
-        tb.MouseButton1Click:Connect(function()
-            playButtonSound()
-            local c = categoryFrames[cn]
-            if not c or not c.Parent then return end
-            categoryStates[cn] = not categoryStates[cn]
-            c.Visible = categoryStates[cn]
-            config.tabs[cn] = categoryStates[cn]
-            saveConfig()
-        end)
-        addTooltip(tb, "Toggle " .. cn .. " tab")
-    end
-    local sc = Instance.new("Frame")
-    sc.BackgroundTransparency = 1
-    sc.Position = UDim2.new(1, -48, 1, -48)
-    sc.Size = UDim2.fromOffset(40, 40)
-    sc.ZIndex = 20015
-    sc.Parent = tabPanel
-    local sb = Instance.new("TextButton")
-    sb.AutoButtonColor = false
-    sb.BackgroundTransparency = 1
-    sb.BorderSizePixel = 0
-    sb.Size = UDim2.fromScale(1, 1)
-    sb.Text = ""
-    sb.ZIndex = 20016
-    sb.Parent = sc
-    local si = Instance.new("ImageLabel")
-    si.BackgroundTransparency = 1
-    si.AnchorPoint = Vector2.new(0.5, 0.5)
-    si.Position = UDim2.fromScale(0.5, 0.5)
-    si.Size = UDim2.fromScale(1, 1)
-    si.ScaleType = Enum.ScaleType.Fit
-    si.ImageColor3 = Color3.fromRGB(255, 255, 255)
-    si.ZIndex = 20017
-    si.Parent = sb
-    task.spawn(function()
-        if type(request) == "function" and type(writefile) == "function" then
-            pcall(function()
-                local r = request({ Url = SETTINGS_ICON_URL, Method = "GET" })
-                if r and r.Success and r.Body then
-                    writefile("nox_settings_icon.png", r.Body)
-                    local a = getCustomAsset("nox_settings_icon.png")
-                    if a then si.Image = a end
-                end
-            end)
-        end
-    end)
-    if si.Image == "" then si.Image = "rbxassetid://6034654127" end
-    sb.MouseEnter:Connect(function() tw(si, { ImageColor3 = Color3.fromRGB(180, 180, 180) }, 0.1) end)
-    sb.MouseLeave:Connect(function() tw(si, { ImageColor3 = Color3.fromRGB(255, 255, 255) }, 0.1) end)
-    addTooltip(sb, "Open GUI settings")
-    sb.MouseButton1Click:Connect(function() playButtonSound(); createSettingsWindow() end)
-    buildSettingsView()
-    buildSettingsContent()
+
     local sxf = Instance.new("Frame")
     sxf.Name = "SearchBar"
     sxf.BackgroundColor3 = Colors.Panel
@@ -2069,15 +2224,15 @@ local function init()
     sxf.Position = UDim2.fromOffset(tonumber(config.searchPosition.x) or 300, tonumber(config.searchPosition.y) or 50)
     sxf.ZIndex = 30000
     sxf.Parent = screenGui
-    local sh = Instance.new("TextButton")
-    sh.AutoButtonColor = false
-    sh.BackgroundColor3 = Colors.Panel
-    sh.BorderSizePixel = 0
-    sh.Size = UDim2.new(1, 0, 0, 40)
-    sh.Text = ""
-    sh.ZIndex = 30001
-    sh.Parent = sxf
-    makeDraggable(sxf, sh, "searchBar", false)
+    local sh2 = Instance.new("TextButton")
+    sh2.AutoButtonColor = false
+    sh2.BackgroundColor3 = Colors.Panel
+    sh2.BorderSizePixel = 0
+    sh2.Size = UDim2.new(1, 0, 0, 40)
+    sh2.Text = ""
+    sh2.ZIndex = 30001
+    sh2.Parent = sxf
+    makeDraggable(sxf, sh2, "searchBar", false)
     local sbx = Instance.new("TextBox")
     sbx.BackgroundColor3 = Colors.ToggleOff
     sbx.BorderSizePixel = 0
@@ -2091,7 +2246,7 @@ local function init()
     sbx.ZIndex = 30002
     sbx.Parent = sxf
     filterButtons = function(q)
-        if not tabPanel.Visible then return end
+        if not tabPanel.Visible or currentSettingsCategory ~= nil then return end
         q = string.lower(q)
         for cn, card in pairs(categoryFrames) do
             if card and card.Parent then
@@ -2110,12 +2265,13 @@ local function init()
                             end
                         end
                     end
-                    card.Visible = (q ~= "" and anyV) or (q == "" and categoryStates[cn] and currentSettingsCategory == nil)
+                    card.Visible = (q ~= "" and anyV) or (q == "" and categoryStates[cn])
                 end
             end
         end
     end
     sbx:GetPropertyChangedSignal("Text"):Connect(function() filterButtons(sbx.Text) end)
+
     UserInputService.InputBegan:Connect(function(input, gp)
         if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
         local key = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil
@@ -2184,16 +2340,16 @@ end
 
 local NoxLib = {}
 function NoxLib.addCategory(name)
-    assert(type(name) == "string" and name ~= "", "NoxLib.addCategory: name must be a non-empty string")
+    assert(type(name) == "string" and name ~= "")
     if _categoryMap[name] then return end
     local c = { name = name, items = {} }
     table.insert(_categories, c)
     _categoryMap[name] = c
 end
 function NoxLib.addButton(categoryName, opts)
-    assert(type(categoryName) == "string", "NoxLib.addButton: categoryName must be string")
-    assert(type(opts) == "table", "NoxLib.addButton: opts must be table")
-    assert(type(opts.name) == "string" and opts.name ~= "", "NoxLib.addButton: opts.name required")
+    assert(type(categoryName) == "string")
+    assert(type(opts) == "table")
+    assert(type(opts.name) == "string" and opts.name ~= "")
     if not _categoryMap[categoryName] then NoxLib.addCategory(categoryName) end
     local c = _categoryMap[categoryName]
     table.insert(c.items, {
