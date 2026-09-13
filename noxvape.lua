@@ -145,7 +145,8 @@ local config = {
 		r = 235 / 255,
 		g = 240 / 255,
 		b = 245 / 255
-	}
+	},
+	rainbowPickers = {}
 }
 local function loadConfig()
 	if not canUseFiles() then
@@ -255,6 +256,9 @@ local function repairConfig()
 		config.textColor.r = tonumber(config.textColor.r) or 235 / 255
 		config.textColor.g = tonumber(config.textColor.g) or 240 / 255
 		config.textColor.b = tonumber(config.textColor.b) or 245 / 255
+	end
+	if type(config.rainbowPickers) ~= "table" then
+		config.rainbowPickers = {}
 	end
 	config.settings["noxvape"] = config.settings["noxvape"] or {}
 end
@@ -402,6 +406,15 @@ local function applyMenuColorToGui(newColor)
 				d.TextColor3 = Colors.Accent
 			end
 		end
+	end
+	if Colors.Text == oldAccent then
+		Colors.Text = Colors.Accent
+		config.textColor = {
+			r = Colors.Accent.R,
+			g = Colors.Accent.G,
+			b = Colors.Accent.B
+		}
+		saveConfig()
 	end
 end
 local function applyTextColorToGui(newColor)
@@ -713,7 +726,7 @@ local function makeDraggable(obj, handle, posName, isNox)
 		end)
 	end)
 end
-local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labelText, options)
+local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labelText, options, pickerId)
 	options = options or {}
 	local default = typeof(initial) == "Color3" and initial or Color3.fromRGB(255, 255, 255)
 	local current = default
@@ -979,40 +992,54 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 	rgbBtn.Parent = frame
 	local autoRGB = false
 	local rgbConn = nil
-	local function toggleRGB()
-		if autoRGB then
-			autoRGB = false
-			if rgbConn then
-				rgbConn:Disconnect();
-				rgbConn = nil
+	local function startRGB()
+		autoRGB = true
+		rgbBtn.BackgroundColor3 = Colors.Accent
+		saturation = 1
+		value = 1
+		hue = ((tick() - RGB_EPOCH) * RGB_SPEED) % 1
+		updateWP()
+		updateDS()
+		updateGrad()
+		applyColor()
+		rgbConn = RunService.Heartbeat:Connect(function()
+			if not frame.Parent then
+				if rgbConn then
+					rgbConn:Disconnect();
+					rgbConn = nil
+				end
+				return
 			end
-			rgbBtn.BackgroundColor3 = Colors.Action
-		else
-			autoRGB = true
-			rgbBtn.BackgroundColor3 = Colors.Accent
+			hue = ((tick() - RGB_EPOCH) * RGB_SPEED) % 1
 			saturation = 1
 			value = 1
-			hue = ((tick() - RGB_EPOCH) * RGB_SPEED) % 1
 			updateWP()
 			updateDS()
 			updateGrad()
 			applyColor()
-			rgbConn = RunService.Heartbeat:Connect(function()
-				if not frame.Parent then
-					if rgbConn then
-						rgbConn:Disconnect();
-						rgbConn = nil
-					end
-					return
-				end
-				hue = ((tick() - RGB_EPOCH) * RGB_SPEED) % 1
-				saturation = 1
-				value = 1
-				updateWP()
-				updateDS()
-				updateGrad()
-				applyColor()
-			end)
+		end)
+		if pickerId then
+			config.rainbowPickers[pickerId] = true
+			saveConfig()
+		end
+	end
+	local function stopRGB()
+		autoRGB = false
+		if rgbConn then
+			rgbConn:Disconnect();
+			rgbConn = nil
+		end
+		rgbBtn.BackgroundColor3 = Colors.Action
+		if pickerId then
+			config.rainbowPickers[pickerId] = false
+			saveConfig()
+		end
+	end
+	local function toggleRGB()
+		if autoRGB then
+			stopRGB()
+		else
+			startRGB()
 		end
 	end
 	rgbBtn.MouseEnter:Connect(function()
@@ -1029,6 +1056,9 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 		toggleRGB()
 	end)
 	addTooltip(rgbBtn, "Synchronized RGB cycling")
+	if pickerId and config.rainbowPickers[pickerId] == true then
+		startRGB()
+	end
 	return frame, setFullColor
 end
 local buttonData = {}
@@ -1448,7 +1478,8 @@ local function captureCurrentConfig()
 		closeSoundId = config.closeSoundId,
 		guiKeybind = config.guiKeybind,
 		menuColor = HttpService:JSONDecode(HttpService:JSONEncode(config.menuColor)),
-		textColor = HttpService:JSONDecode(HttpService:JSONEncode(config.textColor))
+		textColor = HttpService:JSONDecode(HttpService:JSONEncode(config.textColor)),
+		rainbowPickers = HttpService:JSONDecode(HttpService:JSONEncode(config.rainbowPickers))
 	}
 end
 local function saveProfile(name)
@@ -1528,6 +1559,9 @@ local function applyProfileData(data)
 	if type(data.textColor) == "table" then
 		local newColor = Color3.new(data.textColor.r, data.textColor.g, data.textColor.b)
 		applyTextColorToGui(newColor)
+	end
+	if type(data.rainbowPickers) == "table" then
+		config.rainbowPickers = data.rainbowPickers
 	end
 	for cat, feats in pairs(buttonData) do
 		for name, d in pairs(feats) do
@@ -2502,7 +2536,7 @@ local function createSettingsWindow()
 	local currentMenuColor = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
 	local colorPickerFrame = buildColorPickerRow(content, 12, currentMenuColor, function(c)
 		applyMenuColorToGui(c)
-	end, "Accent Color")
+	end, "Accent Color", nil, "__menuAccent")
 	addBtn("Revert to Default", function()
 		applyMenuColorToGui(DEFAULT_MENU_COLOR)
 		notifyEnabled("Menu color reset to default")
@@ -2511,7 +2545,7 @@ local function createSettingsWindow()
 	local currentTextColor = Color3.new(config.textColor.r, config.textColor.g, config.textColor.b)
 	buildColorPickerRow(content, 15, currentTextColor, function(c)
 		applyTextColorToGui(c)
-	end, "Text Color")
+	end, "Text Color", nil, "__menuText")
 	addBtn("Revert Text to Default", function()
 		applyTextColorToGui(DEFAULT_TEXT_COLOR)
 		notifyEnabled("Text color reset to default")
@@ -2921,7 +2955,7 @@ local function init()
 						buildColorPickerRow(settingsFrame, order, cur, function(c)
 							setSetting(catName, itemName, sk, c)
 							safeCall(setting.onChanged or setting.action, c)
-						end, sn)
+						end, sn, nil, catName .. "/" .. itemName .. "/" .. sk)
 					elseif st == "dropdown" then
 						local options = type(setting.options) == "table" and setting.options or {}
 						local df = setting.default or options[1] or "None"
