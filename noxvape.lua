@@ -18,6 +18,7 @@ local POGCHAMP_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a
 local SETTINGS_ICON_URL = "https://github.com/Gorillatagmodder123456/a/raw/main/ChatGPT%20Image%20Aug%2026%2C%202026%2C%2007_00_05%20AM.png"
 local RGB_SPEED = 0.75
 local RGB_EPOCH = tick()
+local DEFAULT_MENU_COLOR = Color3.fromRGB(55, 150, 200)
 
 local Colors = {
 	Panel = Color3.fromRGB(4, 5, 7),
@@ -29,7 +30,7 @@ local Colors = {
 	Action = Color3.fromRGB(10, 12, 16),
 	ActionHover = Color3.fromRGB(20, 20, 22),
 	Setting = Color3.fromRGB(5, 7, 10),
-	Accent = Color3.fromRGB(55, 150, 200),
+	Accent = DEFAULT_MENU_COLOR,
 	Warning = Color3.fromRGB(255, 165, 0),
 	Error = Color3.fromRGB(220, 50, 50),
 	Text = Color3.fromRGB(235, 240, 245),
@@ -224,8 +225,7 @@ local function applyMenuColorToGui(newColor)
 			local c = d.BackgroundColor3
 			if c == oldAccent then d.BackgroundColor3 = Colors.Accent
 			elseif c == oldOn then d.BackgroundColor3 = Colors.ToggleOn
-			elseif c == oldOnHover then d.BackgroundColor3 = Colors.ToggleOnHover
-			end
+			elseif c == oldOnHover then d.BackgroundColor3 = Colors.ToggleOnHover end
 		end
 		if d:IsA("UIStroke") then
 			if d.Color == oldAccent then d.Color = Colors.Accent end
@@ -447,7 +447,8 @@ local function makeDraggable(obj, handle, posName, isNox)
 	end)
 end
 
-local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labelText)
+local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labelText, options)
+	options = options or {}
 	local default = typeof(initial) == "Color3" and initial or Color3.fromRGB(255, 255, 255)
 	local current = default
 	local hue, saturation, value = current:ToHSV()
@@ -563,6 +564,16 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 		updateGrad()
 		safeCall(onChanged, current)
 	end
+	local function setFullColor(color)
+		current = color
+		hue, saturation, value = color:ToHSV()
+		preview.BackgroundColor3 = current
+		cd.BackgroundColor3 = current
+		updateWP()
+		updateDS()
+		updateGrad()
+		safeCall(onChanged, current)
+	end
 	local wheelDragging = false
 	local dDragging = false
 	local function updateWM()
@@ -624,15 +635,11 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 	syncBtn.Visible = false
 	syncBtn.ZIndex = 25003
 	syncBtn.Parent = frame
-	syncBtn.MouseEnter:Connect(function()
-		syncBtn.BackgroundColor3 = Colors.ActionHover
-	end)
-	syncBtn.MouseLeave:Connect(function()
-		syncBtn.BackgroundColor3 = Colors.Action
-	end)
+	syncBtn.MouseEnter:Connect(function() syncBtn.BackgroundColor3 = Colors.ActionHover end)
+	syncBtn.MouseLeave:Connect(function() syncBtn.BackgroundColor3 = Colors.Action end)
 	syncBtn.MouseButton1Click:Connect(function()
-		applyMenuColorToGui(current)
-		notifyEnabled("Menu color applied")
+		setFullColor(Colors.Accent)
+		notifyEnabled("Synced picker to menu color")
 	end)
 	local function closePicker()
 		pickerFrame.Visible = false
@@ -678,13 +685,23 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 		else
 			autoRGB = true
 			rgbBtn.BackgroundColor3 = Colors.Accent
+			saturation = 1
+			value = 1
+			hue = ((tick() - RGB_EPOCH) * RGB_SPEED) % 1
+			updateWP()
+			updateDS()
+			updateGrad()
+			applyColor()
 			rgbConn = RunService.Heartbeat:Connect(function()
 				if not frame.Parent then
 					if rgbConn then rgbConn:Disconnect(); rgbConn = nil end
 					return
 				end
 				hue = ((tick() - RGB_EPOCH) * RGB_SPEED) % 1
+				saturation = 1
+				value = 1
 				updateWP()
+				updateDS()
 				updateGrad()
 				applyColor()
 			end)
@@ -694,7 +711,7 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 	rgbBtn.MouseLeave:Connect(function() if not autoRGB then rgbBtn.BackgroundColor3 = Colors.Action end end)
 	rgbBtn.MouseButton1Click:Connect(function() toggleRGB() end)
 	addTooltip(rgbBtn, "Synchronized RGB cycling")
-	return frame
+	return frame, setFullColor
 end
 
 local buttonData = {}
@@ -865,9 +882,7 @@ end
 local function applyFastFlags(flags)
 	if type(flags) ~= "table" then return 0, "not a table" end
 	local fn = getFFlagFunction()
-	if not fn then
-		return 0, "setfflag not available in this executor"
-	end
+	if not fn then return 0, "setfflag not available in this executor" end
 	local count = 0
 	for k, v in pairs(flags) do
 		local ok = pcall(function() fn(tostring(k), tostring(v)) end)
@@ -936,9 +951,7 @@ end
 local function deleteProfile(name)
 	if not canUseFiles() then return false end
 	local e = findProfileEntry(name)
-	if e then
-		if delFileSafe(e.path) then return true end
-	end
+	if e then if delFileSafe(e.path) then return true end end
 	for _, p in ipairs({PROFILES_FOLDER .. "/" .. name .. ".json", PROFILES_FOLDER .. "\\" .. name .. ".json", name .. ".json"}) do
 		if isfile(p) then if delFileSafe(p) then return true end end
 	end
@@ -964,8 +977,7 @@ local function saveProfile(name)
 	ensureProfilesFolder()
 	local data = captureCurrentConfig()
 	data.name = name
-	local ok = writeProfileData(name, data)
-	return ok, nil
+	return writeProfileData(name, data), nil
 end
 local function countEnabledFeatures(data)
 	local count = 0
@@ -1006,9 +1018,7 @@ local function applyProfileData(data)
 		for name, d in pairs(feats) do
 			if d.isToggle then
 				local newState = false
-				if config.features[cat] and config.features[cat][name] == true then
-					newState = true
-				end
+				if config.features[cat] and config.features[cat][name] == true then newState = true end
 				local curState = d.getState and d.getState() or false
 				if curState ~= newState then
 					if type(d.action) == "function" then pcall(d.action, newState) end
@@ -1268,11 +1278,8 @@ local function createFastFlagWindow()
 			lb.MouseButton1Click:Connect(function()
 				playButtonSound()
 				local n, err = applyFastFlags(entry.flags)
-				if err then
-					notifyError("Failed: " .. err)
-				else
-					notifyEnabled("Loaded " .. n .. " flags from " .. entry.name)
-				end
+				if err then notifyError("Failed: " .. err)
+				else notifyEnabled("Loaded " .. n .. " flags from " .. entry.name) end
 			end)
 			db.MouseEnter:Connect(function() db.BackgroundColor3 = Color3.fromRGB(255, 80, 80) end)
 			db.MouseLeave:Connect(function() db.BackgroundColor3 = Colors.Error end)
@@ -1295,14 +1302,8 @@ local function createFastFlagWindow()
 		local raw = importJson.Text
 		if raw == "" then notifyError("Paste JSON"); return end
 		local ok, decoded = pcall(function() return HttpService:JSONDecode(raw) end)
-		if not ok or type(decoded) ~= "table" then
-			notifyError("Invalid JSON")
-			return
-		end
-		local folder = findLoaderFolder()
-		if not folder then
-			folder = ensureFastFlagsFolder()
-		end
+		if not ok or type(decoded) ~= "table" then notifyError("Invalid JSON") return end
+		local folder = findLoaderFolder() or ensureFastFlagsFolder()
 		if not folder then notifyError("Could not create folder"); return end
 		local existing = folder:FindFirstChild(name)
 		if existing then existing:Destroy() end
@@ -1447,13 +1448,9 @@ local function createProfilesWindow()
 	previewLabel.Parent = w
 	local function updatePreview()
 		local count, list = countEnabledFeatures({features = config.features})
-		if count == 0 then
-			previewLabel.Text = "Nothing enabled (profile will be empty)"
-		elseif count <= 3 then
-			previewLabel.Text = "Saves " .. count .. " enabled: " .. table.concat(list, ", ")
-		else
-			previewLabel.Text = "Saves " .. count .. " enabled features"
-		end
+		if count == 0 then previewLabel.Text = "Nothing enabled (profile will be empty)"
+		elseif count <= 3 then previewLabel.Text = "Saves " .. count .. " enabled: " .. table.concat(list, ", ")
+		else previewLabel.Text = "Saves " .. count .. " enabled features" end
 	end
 	updatePreview()
 	local pl = Instance.new("ScrollingFrame")
@@ -1541,11 +1538,8 @@ local function createProfilesWindow()
 				local d = readProfile(entry.name)
 				if not d then notifyError("Failed to read profile: " .. entry.name); return end
 				local ok = applyProfileData(d)
-				if ok then
-					notifyEnabled("Loaded profile: " .. entry.name)
-				else
-					notifyError("Failed to apply profile")
-				end
+				if ok then notifyEnabled("Loaded profile: " .. entry.name)
+				else notifyError("Failed to apply profile") end
 			end)
 			db.MouseEnter:Connect(function() db.BackgroundColor3 = Color3.fromRGB(255, 80, 80) end)
 			db.MouseLeave:Connect(function() db.BackgroundColor3 = Colors.Error end)
@@ -1569,14 +1563,10 @@ local function createProfilesWindow()
 			ni.Text = ""
 			refresh()
 			updatePreview()
-		else
-			notifyError("Save failed: " .. tostring(err))
-		end
+		else notifyError("Save failed: " .. tostring(err)) end
 	end)
 	UserInputService.InputBegan:Connect(function(input, gp)
-		if w.Visible then
-			task.defer(updatePreview)
-		end
+		if w.Visible then task.defer(updatePreview) end
 	end)
 	task.defer(refresh)
 end
@@ -1588,7 +1578,7 @@ local function createSettingsWindow()
 	w.Name = "SettingsWindow"
 	w.BackgroundColor3 = Colors.Panel
 	w.BorderSizePixel = 0
-	w.Size = UDim2.fromOffset(320, 560)
+	w.Size = UDim2.fromOffset(320, 620)
 	w.Position = UDim2.fromOffset(wx, wy)
 	w.ClipsDescendants = true
 	w.ZIndex = 40000
@@ -1678,10 +1668,7 @@ local function createSettingsWindow()
 		c.MouseEnter:Connect(function() c.BackgroundColor3 = getter() and Colors.ToggleOnHover or Colors.ToggleOffHover end)
 		c.MouseLeave:Connect(function() upd() end)
 		c.MouseButton1Click:Connect(function()
-			playButtonSound()
-			setter(not getter())
-			upd()
-			saveConfig()
+			playButtonSound(); setter(not getter()); upd(); saveConfig()
 		end)
 		addTooltip(c, tip or "Toggle")
 	end
@@ -1716,9 +1703,7 @@ local function createSettingsWindow()
 		tb.FocusLost:Connect(function()
 			local t = tb.Text:gsub("%s+", "")
 			if t == "" then t = ph or "0" end
-			tb.Text = t
-			setter(t)
-			saveConfig()
+			tb.Text = t; setter(t); saveConfig()
 		end)
 	end
 	local function addVolSlider(order)
@@ -1818,14 +1803,23 @@ local function createSettingsWindow()
 		setSetting("noxvape", "blur", "enabled", v)
 		updateBlur()
 	end, 10, "Blur background when GUI open")
-	addLabel("Managers", 11)
-	addBtn("Fast Flag Manager", function() createFastFlagWindow() end, 12, false)
-	addBtn("Profiles", function() createProfilesWindow() end, 13, false)
-	addLabel("Other", 14)
+	addLabel("Menu Color", 11)
+	local currentMenuColor = Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b)
+	local colorPickerFrame = buildColorPickerRow(content, 12, currentMenuColor, function(c)
+		applyMenuColorToGui(c)
+	end, "Accent Color")
+	addBtn("Revert to Default", function()
+		applyMenuColorToGui(DEFAULT_MENU_COLOR)
+		notifyEnabled("Menu color reset to default")
+	end, 13, false)
+	addLabel("Managers", 14)
+	addBtn("Fast Flag Manager", function() createFastFlagWindow() end, 15, false)
+	addBtn("Profiles", function() createProfilesWindow() end, 16, false)
+	addLabel("Other", 17)
 	local sf = Instance.new("Frame")
 	sf.BackgroundTransparency = 1
 	sf.Size = UDim2.new(1, 0, 0, 42)
-	sf.LayoutOrder = 15
+	sf.LayoutOrder = 18
 	sf.Parent = content
 	local sd = Instance.new("TextButton")
 	sd.AutoButtonColor = false
@@ -2000,9 +1994,7 @@ local function init()
 					if currentState then notifyEnabled(itemName .. " enabled")
 					else notifyWarning(itemName .. " disabled") end
 					saveConfig()
-				else
-					refreshColor()
-				end
+				else refreshColor() end
 			end
 			button.MouseButton1Click:Connect(function() playButtonSound() performToggle() end)
 			button.MouseButton2Click:Connect(function()
@@ -2059,8 +2051,7 @@ local function init()
 						local mn = tonumber(setting.min) or 0
 						local mx = tonumber(setting.max) or 100
 						if mx < mn then mn, mx = mx, mn end
-						local df = tonumber(setting.default)
-						if df == nil then df = mn end
+						local df = tonumber(setting.default) or mn
 						df = math.clamp(df, mn, mx)
 						local step = tonumber(setting.step) or 1
 						if step <= 0 then step = 1 end
@@ -2068,60 +2059,39 @@ local function init()
 						local function rTS(v)
 							v = math.clamp(v, mn, mx)
 							local s = math.floor(((v - mn) / step) + 0.5)
-							local r = mn + (s * step)
-							return math.clamp(r, mn, mx)
+							return math.clamp(mn + s * step, mn, mx)
 						end
 						current = rTS(current)
 						local function fmt(v)
 							if step >= 1 and step == math.floor(step) then return tostring(math.floor(v + 0.5)) end
-							local d = 0
-							local t = step
-							while d < 10 and math.abs(t - math.floor(t)) > 0.000001 do
-								t *= 10
-								d += 1
-							end
+							local d = 0; local t = step
+							while d < 10 and math.abs(t - math.floor(t)) > 0.000001 do t *= 10; d += 1 end
 							return string.format("%." .. d .. "f", v)
 						end
 						local f = Instance.new("Frame")
-						f.BackgroundTransparency = 1
-						f.Size = UDim2.new(1, 0, 0, 48)
-						f.LayoutOrder = order
-						f.Parent = settingsFrame
+						f.BackgroundTransparency = 1; f.Size = UDim2.new(1, 0, 0, 48)
+						f.LayoutOrder = order; f.Parent = settingsFrame
 						local l = Instance.new("TextLabel")
-						l.BackgroundTransparency = 1
-						l.Size = UDim2.new(1, 0, 0, 18)
-						l.FontFace = UIFont
-						l.TextSize = 14
-						l.TextColor3 = Colors.Text
+						l.BackgroundTransparency = 1; l.Size = UDim2.new(1, 0, 0, 18)
+						l.FontFace = UIFont; l.TextSize = 14; l.TextColor3 = Colors.Text
 						l.TextXAlignment = Enum.TextXAlignment.Left
-						l.Text = sn .. " (" .. fmt(current) .. ")"
-						l.Parent = f
+						l.Text = sn .. " (" .. fmt(current) .. ")"; l.Parent = f
 						local sb = Instance.new("Frame")
-						sb.BackgroundColor3 = Colors.ToggleOff
-						sb.BorderSizePixel = 0
-						sb.Position = UDim2.fromOffset(0, 24)
-						sb.Size = UDim2.new(1, 0, 0, 14)
-						sb.Parent = f
+						sb.BackgroundColor3 = Colors.ToggleOff; sb.BorderSizePixel = 0
+						sb.Position = UDim2.fromOffset(0, 24); sb.Size = UDim2.new(1, 0, 0, 14); sb.Parent = f
 						local range = mx - mn
 						local pct = range == 0 and 0 or math.clamp((current - mn) / range, 0, 1)
 						local fill = Instance.new("Frame")
-						fill.BackgroundColor3 = Colors.Accent
-						fill.BorderSizePixel = 0
-						fill.Size = UDim2.new(pct, 0, 1, 0)
-						fill.Parent = sb
+						fill.BackgroundColor3 = Colors.Accent; fill.BorderSizePixel = 0
+						fill.Size = UDim2.new(pct, 0, 1, 0); fill.Parent = sb
 						local knob = Instance.new("TextButton")
-						knob.AutoButtonColor = false
-						knob.BackgroundColor3 = Colors.Accent
-						knob.BorderSizePixel = 0
-						knob.AnchorPoint = Vector2.new(0.5, 0.5)
+						knob.AutoButtonColor = false; knob.BackgroundColor3 = Colors.Accent
+						knob.BorderSizePixel = 0; knob.AnchorPoint = Vector2.new(0.5, 0.5)
 						knob.Position = UDim2.new(pct, 0, 0.5, 0)
-						knob.Size = UDim2.fromOffset(12, 16)
-						knob.Text = ""
-						knob.Parent = sb
+						knob.Size = UDim2.fromOffset(12, 16); knob.Text = ""; knob.Parent = sb
 						local drg = false
 						local function upd(v)
-							v = rTS(v)
-							setSetting(catName, itemName, sk, v)
+							v = rTS(v); setSetting(catName, itemName, sk, v)
 							local p = range == 0 and 0 or math.clamp((v - mn) / range, 0, 1)
 							fill.Size = UDim2.new(p, 0, 1, 0)
 							knob.Position = UDim2.new(p, 0, 0.5, 0)
@@ -2162,64 +2132,39 @@ local function init()
 						end, sn)
 					elseif st == "dropdown" then
 						local options = type(setting.options) == "table" and setting.options or {}
-						local df = setting.default
-						if df == nil then df = options[1] or "None" end
+						local df = setting.default or options[1] or "None"
 						local cur = getSetting(catName, itemName, sk, df)
 						local f = Instance.new("Frame")
-						f.BackgroundTransparency = 1
-						f.Size = UDim2.new(1, 0, 0, 38)
-						f.LayoutOrder = order
-						f.Parent = settingsFrame
+						f.BackgroundTransparency = 1; f.Size = UDim2.new(1, 0, 0, 38)
+						f.LayoutOrder = order; f.Parent = settingsFrame
 						local l = Instance.new("TextLabel")
-						l.BackgroundTransparency = 1
-						l.Size = UDim2.new(0.5, 0, 1, 0)
-						l.FontFace = UIFont
-						l.TextSize = 16
-						l.TextColor3 = Colors.Text
-						l.TextXAlignment = Enum.TextXAlignment.Left
-						l.Text = sn
-						l.Parent = f
+						l.BackgroundTransparency = 1; l.Size = UDim2.new(0.5, 0, 1, 0)
+						l.FontFace = UIFont; l.TextSize = 16; l.TextColor3 = Colors.Text
+						l.TextXAlignment = Enum.TextXAlignment.Left; l.Text = sn; l.Parent = f
 						local dd = Instance.new("TextButton")
-						dd.AutoButtonColor = false
-						dd.BackgroundColor3 = Colors.Action
-						dd.BorderSizePixel = 0
-						dd.AnchorPoint = Vector2.new(1, 0)
+						dd.AutoButtonColor = false; dd.BackgroundColor3 = Colors.Action
+						dd.BorderSizePixel = 0; dd.AnchorPoint = Vector2.new(1, 0)
 						dd.Position = UDim2.new(1, 0, 0, 0)
-						dd.Size = UDim2.fromOffset(120, 38)
-						dd.FontFace = UIFont
-						dd.TextSize = 15
-						dd.TextColor3 = Colors.Text
+						dd.Size = UDim2.fromOffset(120, 38); dd.FontFace = UIFont
+						dd.TextSize = 15; dd.TextColor3 = Colors.Text
 						dd.TextTruncate = Enum.TextTruncate.AtEnd
-						dd.Text = tostring(cur)
-						dd.ZIndex = 20050
-						dd.Parent = f
+						dd.Text = tostring(cur); dd.ZIndex = 20050; dd.Parent = f
 						local dc = Instance.new("Frame")
-						dc.BackgroundColor3 = Colors.Setting
-						dc.BorderSizePixel = 0
-						dc.Size = UDim2.new(1, 0, 0, 0)
-						dc.AutomaticSize = Enum.AutomaticSize.Y
-						dc.LayoutOrder = order + 100
-						dc.Visible = false
-						dc.ZIndex = 20051
-						dc.Parent = settingsFrame
+						dc.BackgroundColor3 = Colors.Setting; dc.BorderSizePixel = 0
+						dc.Size = UDim2.new(1, 0, 0, 0); dc.AutomaticSize = Enum.AutomaticSize.Y
+						dc.LayoutOrder = order + 100; dc.Visible = false
+						dc.ZIndex = 20051; dc.Parent = settingsFrame
 						local ol = Instance.new("UIListLayout")
 						ol.SortOrder = Enum.SortOrder.LayoutOrder
-						ol.Padding = UDim.new(0, 2)
-						ol.Parent = dc
-						local function closeDd() dc.Visible = false dd.BackgroundColor3 = Colors.Action end
+						ol.Padding = UDim.new(0, 2); ol.Parent = dc
+						local function closeDd() dc.Visible = false; dd.BackgroundColor3 = Colors.Action end
 						for oi, opt in ipairs(options) do
 							local ob = Instance.new("TextButton")
-							ob.AutoButtonColor = false
-							ob.BackgroundColor3 = Colors.Action
-							ob.BorderSizePixel = 0
-							ob.Size = UDim2.new(1, 0, 0, 34)
-							ob.FontFace = UIFont
-							ob.TextSize = 15
-							ob.TextColor3 = Colors.Text
-							ob.Text = tostring(opt)
-							ob.LayoutOrder = oi
-							ob.ZIndex = 20052
-							ob.Parent = dc
+							ob.AutoButtonColor = false; ob.BackgroundColor3 = Colors.Action
+							ob.BorderSizePixel = 0; ob.Size = UDim2.new(1, 0, 0, 34)
+							ob.FontFace = UIFont; ob.TextSize = 15; ob.TextColor3 = Colors.Text
+							ob.Text = tostring(opt); ob.LayoutOrder = oi
+							ob.ZIndex = 20052; ob.Parent = dc
 							ob.MouseEnter:Connect(function() ob.BackgroundColor3 = Colors.ActionHover end)
 							ob.MouseLeave:Connect(function() ob.BackgroundColor3 = Colors.Action end)
 							ob.MouseButton1Click:Connect(function()
@@ -2240,29 +2185,20 @@ local function init()
 						local df = setting.default == true
 						local cur = getSetting(catName, itemName, sk, df) == true
 						local f = Instance.new("Frame")
-						f.BackgroundTransparency = 1
-						f.Size = UDim2.new(1, 0, 0, 38)
-						f.LayoutOrder = order
-						f.Parent = settingsFrame
+						f.BackgroundTransparency = 1; f.Size = UDim2.new(1, 0, 0, 38)
+						f.LayoutOrder = order; f.Parent = settingsFrame
 						local ck = Instance.new("TextButton")
 						ck.AutoButtonColor = false
 						ck.BackgroundColor3 = cur and Colors.ToggleOn or Colors.ToggleOff
-						ck.BorderSizePixel = 0
-						ck.Position = UDim2.fromOffset(6, 4)
-						ck.Size = UDim2.fromOffset(30, 30)
-						ck.Text = ""
-						ck.Parent = f
+						ck.BorderSizePixel = 0; ck.Position = UDim2.fromOffset(6, 4)
+						ck.Size = UDim2.fromOffset(30, 30); ck.Text = ""; ck.Parent = f
 						local l = Instance.new("TextLabel")
-						l.BackgroundTransparency = 1
-						l.Position = UDim2.fromOffset(48, 0)
-						l.Size = UDim2.new(1, -48, 1, 0)
-						l.FontFace = UIFont
-						l.TextSize = 16
-						l.TextColor3 = Colors.Text
+						l.BackgroundTransparency = 1; l.Position = UDim2.fromOffset(48, 0)
+						l.Size = UDim2.new(1, -48, 1, 0); l.FontFace = UIFont
+						l.TextSize = 16; l.TextColor3 = Colors.Text
 						l.TextXAlignment = Enum.TextXAlignment.Left
 						l.TextTruncate = Enum.TextTruncate.AtEnd
-						l.Text = sn
-						l.Parent = f
+						l.Text = sn; l.Parent = f
 						local function upd() ck.BackgroundColor3 = cur and Colors.ToggleOn or Colors.ToggleOff end
 						ck.MouseEnter:Connect(function() ck.BackgroundColor3 = cur and Colors.ToggleOnHover or Colors.ToggleOffHover end)
 						ck.MouseLeave:Connect(function() upd() end)
@@ -2274,31 +2210,19 @@ local function init()
 						end)
 					elseif st == "textbox" then
 						local f = Instance.new("Frame")
-						f.BackgroundTransparency = 1
-						f.Size = UDim2.new(1, 0, 0, 34)
-						f.LayoutOrder = order
-						f.Parent = settingsFrame
+						f.BackgroundTransparency = 1; f.Size = UDim2.new(1, 0, 0, 34)
+						f.LayoutOrder = order; f.Parent = settingsFrame
 						local l = Instance.new("TextLabel")
-						l.BackgroundTransparency = 1
-						l.Size = UDim2.new(0.4, 0, 1, 0)
-						l.FontFace = UIFont
-						l.TextSize = 14
-						l.TextColor3 = Colors.Text
-						l.TextXAlignment = Enum.TextXAlignment.Left
-						l.Text = sn
-						l.Parent = f
+						l.BackgroundTransparency = 1; l.Size = UDim2.new(0.4, 0, 1, 0)
+						l.FontFace = UIFont; l.TextSize = 14; l.TextColor3 = Colors.Text
+						l.TextXAlignment = Enum.TextXAlignment.Left; l.Text = sn; l.Parent = f
 						local tb = Instance.new("TextBox")
-						tb.BackgroundColor3 = Colors.ToggleOff
-						tb.BorderSizePixel = 0
-						tb.AnchorPoint = Vector2.new(1, 0.5)
-						tb.Position = UDim2.new(1, 0, 0.5, 0)
-						tb.Size = UDim2.fromOffset(140, 28)
-						tb.FontFace = UIFont
-						tb.TextSize = 14
-						tb.TextColor3 = Colors.Text
+						tb.BackgroundColor3 = Colors.ToggleOff; tb.BorderSizePixel = 0
+						tb.AnchorPoint = Vector2.new(1, 0.5); tb.Position = UDim2.new(1, 0, 0.5, 0)
+						tb.Size = UDim2.fromOffset(140, 28); tb.FontFace = UIFont
+						tb.TextSize = 14; tb.TextColor3 = Colors.Text
 						tb.Text = tostring(getSetting(catName, itemName, sk, setting.default or ""))
-						tb.ClearTextOnFocus = false
-						tb.Parent = f
+						tb.ClearTextOnFocus = false; tb.Parent = f
 						tb.FocusLost:Connect(function()
 							setSetting(catName, itemName, sk, tb.Text)
 							safeCall(setting.onChanged or setting.action, tb.Text)
