@@ -113,29 +113,6 @@ local function ensureFastFlagsFolder()
 	end
 	return nil
 end
-local function getQueueOnTeleport()
-	if type(queue_on_teleport) == "function" then
-		return queue_on_teleport
-	end
-	if type(queueonteleport) == "function" then
-		return queueonteleport
-	end
-	if type(syn) == "table" and type(syn.queue_on_teleport) == "function" then
-		return syn.queue_on_teleport
-	end
-	if type(fluxus) == "table" and type(fluxus.queue_on_teleport) == "function" then
-		return fluxus.queue_on_teleport
-	end
-	if type(_G) == "table" then
-		if type(_G.queue_on_teleport) == "function" then
-			return _G.queue_on_teleport
-		end
-		if type(_G.queueonteleport) == "function" then
-			return _G.queueonteleport
-		end
-	end
-	return nil
-end
 local config = {
 	version = 3,
 	features = {},
@@ -162,9 +139,7 @@ local config = {
 		r = 55 / 255,
 		g = 150 / 255,
 		b = 200 / 255
-	},
-	autoReloadUrl = "",
-	autoReloadEnabled = false
+	}
 }
 local function loadConfig()
 	if not canUseFiles() then
@@ -264,37 +239,9 @@ local function repairConfig()
 		config.menuColor.g = tonumber(config.menuColor.g) or 150 / 255
 		config.menuColor.b = tonumber(config.menuColor.b) or 200 / 255
 	end
-	if type(config.autoReloadUrl) ~= "string" then
-		config.autoReloadUrl = ""
-	end
-	if type(config.autoReloadEnabled) ~= "boolean" then
-		config.autoReloadEnabled = false
-	end
 	config.settings["noxvape"] = config.settings["noxvape"] or {}
 end
 repairConfig()
-local function pushAutoReload()
-	if config.autoReloadEnabled ~= true then
-		return false
-	end
-	local url = config.autoReloadUrl
-	if type(url) ~= "string" or url == "" then
-		return false
-	end
-	local queueFn = getQueueOnTeleport()
-	if not queueFn then
-		return false
-	end
-	local source = string.format([[
-		task.wait(2)
-		local ok, err = pcall(function()
-			loadstring(game:HttpGet(%q))()
-		end)
-		if not ok then warn("[NoxLib AutoReload]", err) end
-	]], url)
-	local ok = pcall(queueFn, source)
-	return ok
-end
 local function deriveAccentSet(base)
 	local h, s, v = base:ToHSV()
 	return {
@@ -1459,9 +1406,7 @@ local function captureCurrentConfig()
 		openSoundId = config.openSoundId,
 		closeSoundId = config.closeSoundId,
 		guiKeybind = config.guiKeybind,
-		menuColor = HttpService:JSONDecode(HttpService:JSONEncode(config.menuColor)),
-		autoReloadUrl = config.autoReloadUrl,
-		autoReloadEnabled = config.autoReloadEnabled
+		menuColor = HttpService:JSONDecode(HttpService:JSONEncode(config.menuColor))
 	}
 end
 local function saveProfile(name)
@@ -1534,12 +1479,6 @@ local function applyProfileData(data)
 	if type(data.guiKeybind) == "string" then
 		config.guiKeybind = data.guiKeybind
 	end
-	if type(data.autoReloadUrl) == "string" then
-		config.autoReloadUrl = data.autoReloadUrl
-	end
-	if type(data.autoReloadEnabled) == "boolean" then
-		config.autoReloadEnabled = data.autoReloadEnabled
-	end
 	if type(data.menuColor) == "table" then
 		local newColor = Color3.new(data.menuColor.r, data.menuColor.g, data.menuColor.b)
 		applyMenuColorToGui(newColor)
@@ -1562,9 +1501,6 @@ local function applyProfileData(data)
 				end
 			end
 		end
-	end
-	if config.autoReloadEnabled and config.autoReloadUrl ~= "" then
-		task.defer(pushAutoReload)
 	end
 	saveConfig()
 	return true
@@ -2532,36 +2468,11 @@ local function createSettingsWindow()
 	addBtn("Profiles", function()
 		createProfilesWindow()
 	end, 16, false)
-	addLabel("Server Hop", 17)
-	addCheck("Auto Reload After Hop", function()
-		return config.autoReloadEnabled == true
-	end, function(v)
-		if v then
-			local ok = NoxLib.enableAutoReload()
-			if not ok then
-				notifyError("Enable failed — check console")
-			else
-				notifyEnabled("Will auto-reload on next hop")
-			end
-		else
-			NoxLib.disableAutoReload()
-			notifyWarning("Auto reload disabled")
-		end
-	end, 18, "Re-runs your loader script after every server hop")
-	addTextRow("Loader URL", function()
-		return config.autoReloadUrl or ""
-	end, function(v)
-		config.autoReloadUrl = v
-		saveConfig()
-		if config.autoReloadEnabled then
-			pushAutoReload()
-		end
-	end, 19, "https://...")
-	addLabel("Other", 20)
+	addLabel("Other", 17)
 	local sf = Instance.new("Frame")
 	sf.BackgroundTransparency = 1
 	sf.Size = UDim2.new(1, 0, 0, 42)
-	sf.LayoutOrder = 21
+	sf.LayoutOrder = 18
 	sf.Parent = content
 	local sd = Instance.new("TextButton")
 	sd.AutoButtonColor = false
@@ -3503,40 +3414,6 @@ end
 function NoxLib.notifyError(msg)
 	notifyError(msg)
 end
-function NoxLib.setLoaderUrl(url)
-	assert(type(url) == "string" and url ~= "", "NoxLib.setLoaderUrl: url must be a non-empty string")
-	config.autoReloadUrl = url
-	saveConfig()
-	return true
-end
-function NoxLib.enableAutoReload(url)
-	if url ~= nil then
-		if type(url) ~= "string" or url == "" then
-			return false
-		end
-		config.autoReloadUrl = url
-	end
-	if type(config.autoReloadUrl) ~= "string" or config.autoReloadUrl == "" then
-		warn("[NoxLib] enableAutoReload: no loader URL set. Call NoxLib.setLoaderUrl(url) first.")
-		return false
-	end
-	if not getQueueOnTeleport() then
-		warn("[NoxLib] enableAutoReload: this executor has no queue_on_teleport function.")
-		return false
-	end
-	config.autoReloadEnabled = true
-	saveConfig()
-	return pushAutoReload()
-end
-function NoxLib.disableAutoReload()
-	config.autoReloadEnabled = false
-	saveConfig()
-	return true
-end
-function NoxLib.getAutoReloadStatus()
-	local fn = getQueueOnTeleport()
-	return config.autoReloadEnabled == true, config.autoReloadUrl or "", fn ~= nil
-end
 NoxLib.Features = Features
 NoxLib.getSetting = getSetting
 NoxLib.setSetting = setSetting
@@ -3545,9 +3422,6 @@ NoxLib.setMenuVisible = setMenuVisible
 NoxLib.Colors = Colors
 function NoxLib.init()
 	init()
-	if config.autoReloadEnabled and config.autoReloadUrl ~= "" then
-		task.defer(pushAutoReload)
-	end
 end
 _G.NoxLib = NoxLib
 return NoxLib
