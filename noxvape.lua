@@ -306,13 +306,6 @@ local function dataToColor(v)
 	end
 	return v
 end
-local function colorClose(a, b)
-	if not a or not b then
-		return false
-	end
-	local t = 0.02
-	return math.abs(a.R - b.R) < t and math.abs(a.G - b.G) < t and math.abs(a.B - b.B) < t
-end
 local function getFeatureState(cat, name)
 	ensureCategoryData(cat)
 	local v = config.features[cat][name]
@@ -368,152 +361,6 @@ screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 100000
 screenGui.Parent = playerGui
-local tooltip = nil
-local tooltipToken = 0
-local function hideTooltip()
-	tooltipToken += 1
-	if tooltip then
-		pcall(function()
-			tooltip:Destroy()
-		end);
-		tooltip = nil
-	end
-end
-local function showTooltip(text)
-	hideTooltip()
-	tooltipToken += 1
-	local token = tooltipToken
-	task.delay(0.08, function()
-		if token ~= tooltipToken then
-			return
-		end
-		local camera = workspace.CurrentCamera
-		if not camera then
-			return
-		end
-		local mouse = UserInputService:GetMouseLocation()
-		local frame = Instance.new("Frame")
-		frame.Name = "Tooltip"
-		frame.BackgroundColor3 = Colors.Tooltip
-		frame.BorderSizePixel = 0
-		frame.AutomaticSize = Enum.AutomaticSize.XY
-		frame.ZIndex = 60000
-		frame.Parent = screenGui
-		local pad = Instance.new("UIPadding")
-		pad.PaddingTop = UDim.new(0, 7)
-		pad.PaddingBottom = UDim.new(0, 7)
-		pad.PaddingLeft = UDim.new(0, 11)
-		pad.PaddingRight = UDim.new(0, 11)
-		pad.Parent = frame
-		local lbl = Instance.new("TextLabel")
-		lbl.BackgroundTransparency = 1
-		lbl.AutomaticSize = Enum.AutomaticSize.XY
-		lbl.FontFace = UIFont
-		lbl.TextSize = 16
-		lbl.TextColor3 = Colors.Text
-		lbl.Text = text
-		lbl.ZIndex = 60001
-		lbl.Parent = frame
-		task.wait()
-		if token ~= tooltipToken then
-			if frame.Parent then
-				frame:Destroy()
-			end
-			return
-		end
-		local vp = camera.ViewportSize
-		local w = frame.AbsoluteSize.X
-		local h = frame.AbsoluteSize.Y
-		local x = mouse.X + 14
-		local y = mouse.Y + 16
-		if x + w > vp.X - 8 then
-			x = mouse.X - w - 14
-		end
-		if y + h > vp.Y - 8 then
-			y = mouse.Y - h - 16
-		end
-		frame.Position = UDim2.fromOffset(math.clamp(x, 8, math.max(8, vp.X - w - 8)), math.clamp(y, 8, math.max(8, vp.Y - h - 8)))
-		tooltip = frame
-	end)
-end
-local function addTooltip(obj, text)
-	if not text or text == "" then
-		return
-	end
-	obj.MouseEnter:Connect(function()
-		showTooltip(text)
-	end)
-	obj.MouseLeave:Connect(function()
-		hideTooltip()
-	end)
-end
-local function makeDraggable(obj, handle, posName, isNox)
-	local dragging = false
-	local dragStart
-	local startPos
-	local mc, ec
-	handle.InputBegan:Connect(function(input)
-		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.MouseButton2 then
-			return
-		end
-		dragging = true
-		dragStart = input.Position
-		startPos = obj.Position
-		hideTooltip()
-		if mc then
-			mc:Disconnect()
-		end
-		if ec then
-			ec:Disconnect()
-		end
-		mc = UserInputService.InputChanged:Connect(function(ic)
-			if not dragging or ic.UserInputType ~= Enum.UserInputType.MouseMovement then
-				return
-			end
-			local d = ic.Position - dragStart
-			local x = startPos.X.Offset + d.X
-			local y = startPos.Y.Offset + d.Y
-			local cam = workspace.CurrentCamera
-			if cam then
-				local vp = cam.ViewportSize
-				x = math.clamp(x, 0, math.max(0, vp.X - obj.AbsoluteSize.X))
-				y = math.clamp(y, 0, math.max(0, vp.Y - obj.AbsoluteSize.Y))
-			end
-			obj.Position = UDim2.fromOffset(x, y)
-		end)
-		ec = UserInputService.InputEnded:Connect(function(ie)
-			if ie.UserInputType ~= Enum.UserInputType.MouseButton1 and ie.UserInputType ~= Enum.UserInputType.MouseButton2 then
-				return
-			end
-			dragging = false
-			if mc then
-				mc:Disconnect();
-				mc = nil
-			end
-			if ec then
-				ec:Disconnect();
-				ec = nil
-			end
-			if isNox then
-				config.noxPosition = {
-					x = obj.Position.X.Offset,
-					y = obj.Position.Y.Offset
-				}
-			elseif posName == "searchBar" then
-				config.searchPosition = {
-					x = obj.Position.X.Offset,
-					y = obj.Position.Y.Offset
-				}
-			else
-				config.positions[posName] = {
-					x = obj.Position.X.Offset,
-					y = obj.Position.Y.Offset
-				}
-			end
-			saveConfig()
-		end)
-	end)
-end
 local function applyMenuColorToGui(newColor)
 	local oldAccent = Colors.Accent
 	local oldOn = Colors.ToggleOn
@@ -531,40 +378,36 @@ local function applyMenuColorToGui(newColor)
 	for _, d in ipairs(screenGui:GetDescendants()) do
 		if d:IsA("GuiObject") then
 			local c = d.BackgroundColor3
-			if colorClose(c, oldAccent) then
+			if c == oldAccent then
 				d.BackgroundColor3 = Colors.Accent
-			elseif colorClose(c, oldOn) then
+			elseif c == oldOn then
 				d.BackgroundColor3 = Colors.ToggleOn
-			elseif colorClose(c, oldOnHover) then
+			elseif c == oldOnHover then
 				d.BackgroundColor3 = Colors.ToggleOnHover
 			end
 		end
-		if d:IsA("UIStroke") and colorClose(d.Color, oldAccent) then
-			d.Color = Colors.Accent
-		end
-		if d:IsA("ScrollingFrame") and colorClose(d.ScrollBarImageColor3, oldAccent) then
-			d.ScrollBarImageColor3 = Colors.Accent
-		end
-		if (d:IsA("ImageLabel") or d:IsA("ImageButton")) and colorClose(d.ImageColor3, oldAccent) then
-			d.ImageColor3 = Colors.Accent
-		end
-		if (d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox")) and colorClose(d.TextColor3, oldAccent) then
-			d.TextColor3 = Colors.Accent
-		end
-	end
-	for _, feats in pairs(buttonData) do
-		for _, data in pairs(feats) do
-			if data.isToggle and data.button and data.getState and data.getState() then
-				if colorClose(data.button.BackgroundColor3, oldAccent) then
-					data.button.BackgroundColor3 = Colors.Accent
-				end
+		if d:IsA("UIStroke") then
+			if d.Color == oldAccent then
+				d.Color = Colors.Accent
 			end
-			if data.keybindButton and colorClose(data.keybindButton.BackgroundColor3, oldAccent) then
-				data.keybindButton.BackgroundColor3 = Colors.Accent
+		end
+		if d:IsA("ScrollingFrame") then
+			if d.ScrollBarImageColor3 == oldAccent then
+				d.ScrollBarImageColor3 = Colors.Accent
+			end
+		end
+		if d:IsA("ImageLabel") then
+			if d.ImageColor3 == oldAccent then
+				d.ImageColor3 = Colors.Accent
+			end
+		end
+		if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
+			if d.TextColor3 == oldAccent then
+				d.TextColor3 = Colors.Accent
 			end
 		end
 	end
-	if colorClose(Colors.Text, oldAccent) then
+	if Colors.Text == oldAccent then
 		Colors.Text = Colors.Accent
 		config.textColor = {
 			r = Colors.Accent.R,
@@ -585,7 +428,7 @@ local function applyTextColorToGui(newColor)
 	saveConfig()
 	for _, d in ipairs(screenGui:GetDescendants()) do
 		if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
-			if colorClose(d.TextColor3, oldText) then
+			if d.TextColor3 == oldText then
 				d.TextColor3 = Colors.Text
 			end
 		end
@@ -736,6 +579,152 @@ local function notifyWarning(m)
 end
 local function notifyError(m)
 	createNotification(m, "error")
+end
+local tooltip = nil
+local tooltipToken = 0
+local function hideTooltip()
+	tooltipToken += 1
+	if tooltip then
+		pcall(function()
+			tooltip:Destroy()
+		end);
+		tooltip = nil
+	end
+end
+local function showTooltip(text)
+	hideTooltip()
+	tooltipToken += 1
+	local token = tooltipToken
+	task.delay(0.08, function()
+		if token ~= tooltipToken then
+			return
+		end
+		local camera = workspace.CurrentCamera
+		if not camera then
+			return
+		end
+		local mouse = UserInputService:GetMouseLocation()
+		local frame = Instance.new("Frame")
+		frame.Name = "Tooltip"
+		frame.BackgroundColor3 = Colors.Tooltip
+		frame.BorderSizePixel = 0
+		frame.AutomaticSize = Enum.AutomaticSize.XY
+		frame.ZIndex = 60000
+		frame.Parent = screenGui
+		local pad = Instance.new("UIPadding")
+		pad.PaddingTop = UDim.new(0, 7)
+		pad.PaddingBottom = UDim.new(0, 7)
+		pad.PaddingLeft = UDim.new(0, 11)
+		pad.PaddingRight = UDim.new(0, 11)
+		pad.Parent = frame
+		local lbl = Instance.new("TextLabel")
+		lbl.BackgroundTransparency = 1
+		lbl.AutomaticSize = Enum.AutomaticSize.XY
+		lbl.FontFace = UIFont
+		lbl.TextSize = 16
+		lbl.TextColor3 = Colors.Text
+		lbl.Text = text
+		lbl.ZIndex = 60001
+		lbl.Parent = frame
+		task.wait()
+		if token ~= tooltipToken then
+			if frame.Parent then
+				frame:Destroy()
+			end
+			return
+		end
+		local vp = camera.ViewportSize
+		local w = frame.AbsoluteSize.X
+		local h = frame.AbsoluteSize.Y
+		local x = mouse.X + 14
+		local y = mouse.Y + 16
+		if x + w > vp.X - 8 then
+			x = mouse.X - w - 14
+		end
+		if y + h > vp.Y - 8 then
+			y = mouse.Y - h - 16
+		end
+		frame.Position = UDim2.fromOffset(math.clamp(x, 8, math.max(8, vp.X - w - 8)), math.clamp(y, 8, math.max(8, vp.Y - h - 8)))
+		tooltip = frame
+	end)
+end
+local function addTooltip(obj, text)
+	if not text or text == "" then
+		return
+	end
+	obj.MouseEnter:Connect(function()
+		showTooltip(text)
+	end)
+	obj.MouseLeave:Connect(function()
+		hideTooltip()
+	end)
+end
+local function makeDraggable(obj, handle, posName, isNox)
+	local dragging = false
+	local dragStart
+	local startPos
+	local mc, ec
+	handle.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.MouseButton2 then
+			return
+		end
+		dragging = true
+		dragStart = input.Position
+		startPos = obj.Position
+		hideTooltip()
+		if mc then
+			mc:Disconnect()
+		end
+		if ec then
+			ec:Disconnect()
+		end
+		mc = UserInputService.InputChanged:Connect(function(ic)
+			if not dragging or ic.UserInputType ~= Enum.UserInputType.MouseMovement then
+				return
+			end
+			local d = ic.Position - dragStart
+			local x = startPos.X.Offset + d.X
+			local y = startPos.Y.Offset + d.Y
+			local cam = workspace.CurrentCamera
+			if cam then
+				local vp = cam.ViewportSize
+				x = math.clamp(x, 0, math.max(0, vp.X - obj.AbsoluteSize.X))
+				y = math.clamp(y, 0, math.max(0, vp.Y - obj.AbsoluteSize.Y))
+			end
+			obj.Position = UDim2.fromOffset(x, y)
+		end)
+		ec = UserInputService.InputEnded:Connect(function(ie)
+			if ie.UserInputType ~= Enum.UserInputType.MouseButton1 and ie.UserInputType ~= Enum.UserInputType.MouseButton2 then
+				return
+			end
+			dragging = false
+			if mc then
+				mc:Disconnect();
+				mc = nil
+			end
+			if ec then
+				ec:Disconnect();
+				ec = nil
+			end
+			if isNox then
+				config.noxPosition = {
+					x = obj.Position.X.Offset,
+					y = obj.Position.Y.Offset
+				}
+			elseif posName == "searchBar" then
+				config.searchPosition = {
+					x = obj.Position.X.Offset,
+					y = obj.Position.Y.Offset
+				}
+			else
+				config.positions[posName] = {
+					x = obj.Position.X.Offset,
+					y = obj.Position.Y.Offset
+				}
+			end
+			saveConfig()
+		end)
+	end)
 end
 local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labelText, options, pickerId)
 	options = options or {}
