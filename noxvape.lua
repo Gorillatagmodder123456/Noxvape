@@ -17,16 +17,17 @@ local LOGO_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/mai
 local POGCHAMP_URL = "https://raw.githubusercontent.com/Gorillatagmodder123456/a/main/pogchamp-removebg-preview.png"
 local SETTINGS_ICON_URL = "https://github.com/Gorillatagmodder123456/a/raw/main/ChatGPT%20Image%20Aug%2026%2C%202026%2C%2007_00_05%20AM.png"
 local RGB_SPEED = 0.75
+local RGB_EPOCH = tick()
 
 local Colors = {
 	Panel = Color3.fromRGB(4, 5, 7),
 	PanelHover = Color3.fromRGB(9, 11, 15),
 	ToggleOff = Color3.fromRGB(7, 9, 12),
-	ToggleOffHover = Color3.fromRGB(12, 15, 20),
+	ToggleOffHover = Color3.fromRGB(14, 14, 14),
 	ToggleOn = Color3.fromRGB(30, 100, 140),
 	ToggleOnHover = Color3.fromRGB(40, 120, 165),
 	Action = Color3.fromRGB(10, 12, 16),
-	ActionHover = Color3.fromRGB(18, 22, 28),
+	ActionHover = Color3.fromRGB(20, 20, 22),
 	Setting = Color3.fromRGB(5, 7, 10),
 	Accent = Color3.fromRGB(55, 150, 200),
 	Warning = Color3.fromRGB(255, 165, 0),
@@ -399,7 +400,7 @@ end
 local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labelText)
 	local default = typeof(initial) == "Color3" and initial or Color3.fromRGB(255, 255, 255)
 	local current = default
-	local hue, saturation, value = Color3.toHSV(current)
+	local hue, saturation, value = current:ToHSV()
 	local frame = Instance.new("Frame")
 	frame.BackgroundTransparency = 1
 	frame.Size = UDim2.new(1, 0, 0, 38)
@@ -562,7 +563,7 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 	end)
 	local syncBtn = Instance.new("TextButton")
 	syncBtn.AutoButtonColor = false
-	syncBtn.BackgroundColor3 = Colors.Accent
+	syncBtn.BackgroundColor3 = Colors.Action
 	syncBtn.BorderSizePixel = 0
 	syncBtn.Position = UDim2.fromOffset(0, 236)
 	syncBtn.Size = UDim2.fromOffset(194, 32)
@@ -573,12 +574,26 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 	syncBtn.Visible = false
 	syncBtn.ZIndex = 25003
 	syncBtn.Parent = frame
-	syncBtn.MouseEnter:Connect(function() syncBtn.BackgroundColor3 = Colors.ToggleOnHover end)
-	syncBtn.MouseLeave:Connect(function() syncBtn.BackgroundColor3 = Colors.Accent end)
+	syncBtn.MouseEnter:Connect(function()
+		if syncBtn.BackgroundColor3 ~= Colors.Accent then
+			syncBtn.BackgroundColor3 = Colors.ActionHover
+		end
+	end)
+	syncBtn.MouseLeave:Connect(function()
+		if syncBtn.BackgroundColor3 ~= Colors.Accent then
+			syncBtn.BackgroundColor3 = Colors.Action
+		end
+	end)
 	syncBtn.MouseButton1Click:Connect(function()
 		config.menuColor = {r = current.R, g = current.G, b = current.B}
 		saveConfig()
+		syncBtn.BackgroundColor3 = Colors.Accent
 		notifyEnabled("Menu color synced")
+		task.delay(0.6, function()
+			if syncBtn and syncBtn.Parent then
+				syncBtn.BackgroundColor3 = Colors.Action
+			end
+		end)
 	end)
 	local function closePicker()
 		pickerFrame.Visible = false
@@ -629,7 +644,7 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
 					if rgbConn then rgbConn:Disconnect(); rgbConn = nil end
 					return
 				end
-				hue = (tick() * RGB_SPEED) % 1
+				hue = ((tick() - RGB_EPOCH) * RGB_SPEED) % 1
 				updateWP()
 				updateGrad()
 				applyColor()
@@ -799,16 +814,27 @@ local function getFlagsFromFolder(folder)
 	end
 	return list
 end
+local function getFFlagFunction()
+	if type(setfflag) == "function" then return setfflag end
+	if type(SetFastFlag) == "function" then return SetFastFlag end
+	if type(SetFFlag) == "function" then return SetFFlag end
+	if type(SetFlag) == "function" then return SetFlag end
+	if _G and type(_G.setfflag) == "function" then return _G.setfflag end
+	if _G and type(_G.SetFastFlag) == "function" then return _G.SetFastFlag end
+	return nil
+end
 local function applyFastFlags(flags)
-	if type(flags) ~= "table" then return 0 end
+	if type(flags) ~= "table" then return 0, "not a table" end
+	local fn = getFFlagFunction()
+	if not fn then
+		return 0, "setfflag not available in this executor"
+	end
 	local count = 0
 	for k, v in pairs(flags) do
-		local ok = pcall(function()
-			if type(setfflag) == "function" then setfflag(tostring(k), tostring(v)) end
-		end)
+		local ok = pcall(function() fn(tostring(k), tostring(v)) end)
 		if ok then count += 1 end
 	end
-	return count
+	return count, nil
 end
 
 local function ensureProfilesFolder()
@@ -895,15 +921,37 @@ local function captureCurrentConfig()
 	}
 end
 local function saveProfile(name)
-	if not canUseFiles() then return false end
+	if not canUseFiles() then return false, "no file access" end
 	ensureProfilesFolder()
 	local data = captureCurrentConfig()
 	data.name = name
-	return writeProfileData(name, data)
+	local ok = writeProfileData(name, data)
+	return ok, nil
+end
+local function countEnabledFeatures(data)
+	local count = 0
+	local list = {}
+	if type(data) ~= "table" or type(data.features) ~= "table" then return 0, list end
+	for cat, feats in pairs(data.features) do
+		if type(feats) == "table" then
+			for name, v in pairs(feats) do
+				if v == true then
+					count += 1
+					table.insert(list, cat .. " / " .. name)
+				end
+			end
+		end
+	end
+	return count, list
 end
 local function applyProfileData(data)
 	if type(data) ~= "table" then return false end
-	if type(data.features) == "table" then config.features = data.features end
+	if type(data.features) == "table" then
+		for cat, feats in pairs(config.features) do
+			config.features[cat] = config.features[cat] or {}
+		end
+		config.features = data.features
+	end
 	if type(data.settings) == "table" then config.settings = data.settings end
 	if type(data.keybinds) == "table" then config.keybinds = data.keybinds end
 	if type(data.tabs) == "table" then config.tabs = data.tabs end
@@ -917,6 +965,25 @@ local function applyProfileData(data)
 	if type(data.closeSoundId) == "string" then config.closeSoundId = data.closeSoundId end
 	if type(data.guiKeybind) == "string" then config.guiKeybind = data.guiKeybind end
 	if type(data.menuColor) == "table" then config.menuColor = data.menuColor end
+	for cat, feats in pairs(buttonData) do
+		for name, d in pairs(feats) do
+			if d.isToggle then
+				local newState = false
+				if config.features[cat] and config.features[cat][name] == true then
+					newState = true
+				end
+				local curState = d.getState and d.getState() or false
+				if curState ~= newState then
+					if newState then
+						if type(d.action) == "function" then pcall(d.action, true) end
+					else
+						if type(d.action) == "function" then pcall(d.action, false) end
+					end
+					if d.setState then d.setState(newState, true) end
+				end
+			end
+		end
+	end
 	saveConfig()
 	return true
 end
@@ -960,7 +1027,7 @@ local function createFastFlagWindow()
 	w.Name = "FastFlagWindow"
 	w.BackgroundColor3 = Colors.Panel
 	w.BorderSizePixel = 0
-	w.Size = UDim2.fromOffset(360, 440)
+	w.Size = UDim2.fromOffset(360, 500)
 	w.Position = UDim2.fromOffset(wx, wy)
 	w.ClipsDescendants = true
 	w.ZIndex = 45000
@@ -1002,14 +1069,61 @@ local function createFastFlagWindow()
 	hint.TextSize = 12
 	hint.TextColor3 = Colors.MutedText
 	hint.TextXAlignment = Enum.TextXAlignment.Left
-	hint.Text = "Add StringValue JSONs to workspace > " .. FFLAGS_FOLDER_NAME
+	hint.Text = "Import JSON or drop StringValues into workspace > " .. FFLAGS_FOLDER_NAME
 	hint.ZIndex = 45003
 	hint.Parent = w
+	local importRow = Instance.new("Frame")
+	importRow.BackgroundTransparency = 1
+	importRow.Position = UDim2.fromOffset(12, 66)
+	importRow.Size = UDim2.new(1, -24, 0, 60)
+	importRow.ZIndex = 45003
+	importRow.Parent = w
+	local importName = Instance.new("TextBox")
+	importName.BackgroundColor3 = Colors.ToggleOff
+	importName.BorderSizePixel = 0
+	importName.Position = UDim2.fromOffset(0, 0)
+	importName.Size = UDim2.new(0.4, -4, 0, 26)
+	importName.FontFace = UIFont
+	importName.TextSize = 13
+	importName.TextColor3 = Colors.Text
+	importName.PlaceholderText = "Name..."
+	importName.PlaceholderColor3 = Colors.MutedText
+	importName.Text = ""
+	importName.ClearTextOnFocus = false
+	importName.ZIndex = 45004
+	importName.Parent = importRow
+	local importJson = Instance.new("TextBox")
+	importJson.BackgroundColor3 = Colors.ToggleOff
+	importJson.BorderSizePixel = 0
+	importJson.Position = UDim2.fromOffset(0, 30)
+	importJson.Size = UDim2.new(1, -84, 0, 26)
+	importJson.FontFace = UIFont
+	importJson.TextSize = 13
+	importJson.TextColor3 = Colors.Text
+	importJson.PlaceholderText = '{"FFlagExample":"True", ...}'
+	importJson.PlaceholderColor3 = Colors.MutedText
+	importJson.Text = ""
+	importJson.ClearTextOnFocus = false
+	importJson.ZIndex = 45004
+	importJson.Parent = importRow
+	local importBtn = Instance.new("TextButton")
+	importBtn.AutoButtonColor = false
+	importBtn.BackgroundColor3 = Colors.Accent
+	importBtn.BorderSizePixel = 0
+	importBtn.AnchorPoint = Vector2.new(1, 0)
+	importBtn.Position = UDim2.new(1, 0, 0, 30)
+	importBtn.Size = UDim2.fromOffset(80, 26)
+	importBtn.FontFace = UIFont
+	importBtn.TextSize = 13
+	importBtn.TextColor3 = Colors.Text
+	importBtn.Text = "Import"
+	importBtn.ZIndex = 45004
+	importBtn.Parent = importRow
 	local content = Instance.new("ScrollingFrame")
 	content.BackgroundTransparency = 1
 	content.BorderSizePixel = 0
-	content.Position = UDim2.fromOffset(12, 68)
-	content.Size = UDim2.new(1, -24, 1, -136)
+	content.Position = UDim2.fromOffset(12, 134)
+	content.Size = UDim2.new(1, -24, 1, -204)
 	content.ScrollBarThickness = 4
 	content.ScrollBarImageColor3 = Colors.Accent
 	content.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -1113,16 +1227,19 @@ local function createFastFlagWindow()
 			end
 			upd()
 			check.MouseButton1Click:Connect(function()
-				selected[entry.name] = not selected[entry.name] or nil
-				if selected[entry.name] == false then selected[entry.name] = nil end
+				if selected[entry.name] then selected[entry.name] = nil else selected[entry.name] = true end
 				upd()
 			end)
 			lb.MouseEnter:Connect(function() lb.BackgroundColor3 = Colors.ActionHover end)
 			lb.MouseLeave:Connect(function() lb.BackgroundColor3 = Colors.Action end)
 			lb.MouseButton1Click:Connect(function()
 				playButtonSound()
-				local n = applyFastFlags(entry.flags)
-				notifyEnabled("Loaded " .. n .. " flags from " .. entry.name)
+				local n, err = applyFastFlags(entry.flags)
+				if err then
+					notifyError("Failed: " .. err)
+				else
+					notifyEnabled("Loaded " .. n .. " flags from " .. entry.name)
+				end
 			end)
 			db.MouseEnter:Connect(function() db.BackgroundColor3 = Color3.fromRGB(255, 80, 80) end)
 			db.MouseLeave:Connect(function() db.BackgroundColor3 = Colors.Error end)
@@ -1136,6 +1253,35 @@ local function createFastFlagWindow()
 			end)
 		end
 	end
+	importBtn.MouseEnter:Connect(function() importBtn.BackgroundColor3 = Colors.ToggleOnHover end)
+	importBtn.MouseLeave:Connect(function() importBtn.BackgroundColor3 = Colors.Accent end)
+	importBtn.MouseButton1Click:Connect(function()
+		playButtonSound()
+		local name = importName.Text:gsub("%s+", "_")
+		if name == "" then notifyError("Enter a name"); return end
+		local raw = importJson.Text
+		if raw == "" then notifyError("Paste JSON"); return end
+		local ok, decoded = pcall(function() return HttpService:JSONDecode(raw) end)
+		if not ok or type(decoded) ~= "table" then
+			notifyError("Invalid JSON")
+			return
+		end
+		local folder = findLoaderFolder()
+		if not folder then
+			folder = ensureFastFlagsFolder()
+		end
+		if not folder then notifyError("Could not create folder"); return end
+		local existing = folder:FindFirstChild(name)
+		if existing then existing:Destroy() end
+		local sv = Instance.new("StringValue")
+		sv.Name = name
+		sv.Value = raw
+		sv.Parent = folder
+		notifyEnabled("Imported " .. name)
+		importName.Text = ""
+		importJson.Text = ""
+		task.defer(refresh)
+	end)
 	local la = Instance.new("TextButton")
 	la.AutoButtonColor = false
 	la.BackgroundColor3 = Colors.Accent
@@ -1168,7 +1314,11 @@ local function createFastFlagWindow()
 		local folder = findLoaderFolder()
 		for name in pairs(selected) do
 			for _, e in ipairs(getFlagsFromFolder(folder)) do
-				if e.name == name then total = total + applyFastFlags(e.flags) break end
+				if e.name == name then
+					local n = applyFastFlags(e.flags)
+					total = total + n
+					break
+				end
 			end
 		end
 		if total > 0 then notifyEnabled("Loaded " .. total .. " flags total")
@@ -1250,11 +1400,34 @@ local function createProfilesWindow()
 	sb.Text = "Save"
 	sb.ZIndex = 46004
 	sb.Parent = nr
+	local previewLabel = Instance.new("TextLabel")
+	previewLabel.BackgroundTransparency = 1
+	previewLabel.Position = UDim2.fromOffset(12, 86)
+	previewLabel.Size = UDim2.new(1, -24, 0, 18)
+	previewLabel.FontFace = UIFont
+	previewLabel.TextSize = 11
+	previewLabel.TextColor3 = Colors.MutedText
+	previewLabel.TextXAlignment = Enum.TextXAlignment.Left
+	previewLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	previewLabel.Text = ""
+	previewLabel.ZIndex = 46003
+	previewLabel.Parent = w
+	local function updatePreview()
+		local count, list = countEnabledFeatures({features = config.features})
+		if count == 0 then
+			previewLabel.Text = "Nothing enabled (profile will be empty)"
+		elseif count <= 3 then
+			previewLabel.Text = "Saves " .. count .. " enabled: " .. table.concat(list, ", ")
+		else
+			previewLabel.Text = "Saves " .. count .. " enabled features"
+		end
+	end
+	updatePreview()
 	local pl = Instance.new("ScrollingFrame")
 	pl.BackgroundTransparency = 1
 	pl.BorderSizePixel = 0
-	pl.Position = UDim2.fromOffset(12, 90)
-	pl.Size = UDim2.new(1, -24, 1, -150)
+	pl.Position = UDim2.fromOffset(12, 108)
+	pl.Size = UDim2.new(1, -24, 1, -168)
 	pl.ScrollBarThickness = 4
 	pl.ScrollBarImageColor3 = Colors.Accent
 	pl.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -1333,9 +1506,13 @@ local function createProfilesWindow()
 			lb.MouseButton1Click:Connect(function()
 				playButtonSound()
 				local d = readProfile(entry.name)
-				if not d then notifyError("Failed to read profile"); return end
-				applyProfileData(d)
-				notifyEnabled("Loaded profile: " .. entry.name)
+				if not d then notifyError("Failed to read profile: " .. entry.name); return end
+				local ok = applyProfileData(d)
+				if ok then
+					notifyEnabled("Loaded profile: " .. entry.name)
+				else
+					notifyError("Failed to apply profile")
+				end
 			end)
 			db.MouseEnter:Connect(function() db.BackgroundColor3 = Color3.fromRGB(255, 80, 80) end)
 			db.MouseLeave:Connect(function() db.BackgroundColor3 = Colors.Error end)
@@ -1352,11 +1529,21 @@ local function createProfilesWindow()
 		playButtonSound()
 		local name = ni.Text:gsub("%s+", "_")
 		if name == "" then notifyError("Enter a profile name"); return end
-		if saveProfile(name) then
-			notifyEnabled("Saved profile: " .. name)
+		local ok, err = saveProfile(name)
+		if ok then
+			local count = countEnabledFeatures({features = config.features})
+			notifyEnabled("Saved '" .. name .. "' (" .. count .. " enabled)")
 			ni.Text = ""
 			refresh()
-		else notifyError("Save failed") end
+			updatePreview()
+		else
+			notifyError("Save failed: " .. tostring(err))
+		end
+	end)
+	UserInputService.InputBegan:Connect(function(input, gp)
+		if w.Visible then
+			task.defer(updatePreview)
+		end
 	end)
 	task.defer(refresh)
 end
@@ -1701,7 +1888,8 @@ local function init()
 			local description = item.description
 			local action = item.action or function() end
 			local extraSettings = item.settings
-			local currentState = isToggle and getFeatureState(catName, itemName) or false
+			local currentState = false
+			if isToggle then currentState = getFeatureState(catName, itemName) end
 			local wrapper = Instance.new("Frame")
 			wrapper.Name = itemName .. "_Wrapper"
 			wrapper.BackgroundTransparency = 1
@@ -1817,9 +2005,6 @@ local function init()
 			kbb.TextYAlignment = Enum.TextYAlignment.Center
 			kbb.Text = getKeybind(catName, itemName) or "NONE"
 			kbb.Parent = kbr
-			kbb.MouseEnter:Connect(function() kbb.BackgroundColor3 = Colors.ActionHover end)
-			kbb.MouseLeave:Connect(function() kbb.BackgroundColor3 = Colors.Action end)
-			addTooltip(kbb, "Backspace/Escape to clear")
 			kbb.MouseButton1Click:Connect(function()
 				playButtonSound()
 				if waitingForBind then
