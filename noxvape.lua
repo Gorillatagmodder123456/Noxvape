@@ -1,9 +1,8 @@
 --[[
-    NoxLib v1.4  —  noxvape GUI Framework
-    - Synchronized RGB color picker
-    - Sync button on every colorpicker → menu color
-    - Fast Flag Manager (with X delete + Load)
-    - Profiles (Load + X delete, no rename)
+    NoxLib v1.5
+    - Sync-to-Menu-Color button below every colorpicker (full width)
+    - Fast Flag Manager (auto-creates noxvape_fastflags; X delete)
+    - Profiles (Load + X delete; robust path handling)
 ]]
 
 local Players = game:GetService("Players")
@@ -13,6 +12,7 @@ local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -88,18 +88,34 @@ local function safeCall(fn, ...)
     return true, result
 end
 
+-- Robust folder creation for fast flags
 local function ensureFastFlagsFolder()
-    local folder = workspace:FindFirstChild(FFLAGS_FOLDER_NAME)
-    if not folder then
-        local ok, nf = pcall(function()
+    local ok, existing = pcall(function() return Workspace:FindFirstChild(FFLAGS_FOLDER_NAME) end)
+    if ok and existing then return existing end
+
+    local ok2, created = pcall(function()
+        local f = Instance.new("Folder")
+        f.Name = FFLAGS_FOLDER_NAME
+        f.Parent = Workspace
+        return f
+    end)
+    if ok2 and created and created.Parent then return created end
+
+    -- Fallback: game.Workspace reference (usually same as Workspace but just in case)
+    local ws = game:FindFirstChild("Workspace")
+    if ws and ws ~= Workspace then
+        local ok3, e3 = pcall(function() return ws:FindFirstChild(FFLAGS_FOLDER_NAME) end)
+        if ok3 and e3 then return e3 end
+        local ok4, c4 = pcall(function()
             local f = Instance.new("Folder")
             f.Name = FFLAGS_FOLDER_NAME
-            f.Parent = workspace
+            f.Parent = ws
             return f
         end)
-        if ok then folder = nf end
+        if ok4 and c4 then return c4 end
     end
-    return folder
+
+    return nil
 end
 
 local config = {
@@ -173,30 +189,30 @@ local function colorToData(value)
 end
 local function dataToColor(value)
     if type(value) == "table" and type(value.r) == "number" and type(value.g) == "number" and type(value.b) == "number" then
-        return Color3.new(math.clamp(value.r, 0, 1), math.clamp(value.g, 0, 1), math.clamp(value.b, 0, 1))
+        return Color3.new(math.clamp(value.r,0,1), math.clamp(value.g,0,1), math.clamp(value.b,0,1))
     end
     return value
 end
 local function getFeatureState(cat, name)
     ensureCategoryData(cat)
-    local value = config.features[cat][name]
-    return type(value) == "boolean" and value or false
+    local v = config.features[cat][name]
+    return type(v) == "boolean" and v or false
 end
 local function getKeybind(cat, name)
     ensureCategoryData(cat)
-    local value = config.keybinds[cat][name]
-    if type(value) == "string" and value ~= "" then return value end
+    local v = config.keybinds[cat][name]
+    if type(v) == "string" and v ~= "" then return v end
     return nil
 end
 local function getSetting(cat, feat, key, default)
     ensureCategoryData(cat)
     if type(config.settings[cat][feat]) ~= "table" then config.settings[cat][feat] = {} end
-    local value = config.settings[cat][feat][key]
-    if value == nil then
+    local v = config.settings[cat][feat][key]
+    if v == nil then
         config.settings[cat][feat][key] = colorToData(default)
         return default
     end
-    return dataToColor(value)
+    return dataToColor(v)
 end
 local function setSetting(cat, feat, key, value)
     ensureCategoryData(cat)
@@ -244,7 +260,6 @@ local notifCounter = 0
 local activeNotifs = {}
 local MAX_NOTIFS = 5
 local PogchampAsset = nil
-
 task.spawn(function()
     if type(request) == "function" and type(writefile) == "function" then
         pcall(function()
@@ -363,8 +378,7 @@ local function addTooltip(obj, text)
 end
 
 local function makeDraggable(obj, handle, posName, isNox)
-    local dragging = false; local dragStart; local startPos
-    local mc; local ec
+    local dragging = false; local dragStart; local startPos; local mc; local ec
     handle.InputBegan:Connect(function(input)
         if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.MouseButton2 then return end
         dragging = true; dragStart = input.Position; startPos = obj.Position
@@ -398,7 +412,7 @@ local function makeDraggable(obj, handle, posName, isNox)
 end
 
 -- =========================================================================
--- COLOR PICKER FACTORY (with RGB + SYNC buttons)
+-- COLOR PICKER FACTORY (sync button BELOW picker)
 -- =========================================================================
 local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labelText)
     local default = typeof(initial) == "Color3" and initial or Color3.fromRGB(255, 255, 255)
@@ -423,7 +437,6 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     label.Text = labelText
     label.Parent = frame
 
-    -- Buttons: [SYNC][RGB][preview]
     local preview = Instance.new("TextButton")
     preview.Name = "ColorPreview"
     preview.AutoButtonColor = false
@@ -553,9 +566,39 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
         wheelDragging = false; dDragging = false
     end)
 
-    local function closePicker() pickerFrame.Visible = false; frame.Size = UDim2.new(1, 0, 0, 38) end
+    -- Sync button below picker (only visible when picker open)
+    local syncBtn = Instance.new("TextButton")
+    syncBtn.Name = "SyncButton"
+    syncBtn.AutoButtonColor = false
+    syncBtn.BackgroundColor3 = Colors.Accent
+    syncBtn.BorderSizePixel = 0
+    syncBtn.Position = UDim2.fromOffset(0, 236)
+    syncBtn.Size = UDim2.fromOffset(194, 32)
+    syncBtn.FontFace = UIFont
+    syncBtn.TextSize = 15
+    syncBtn.TextColor3 = Colors.Text
+    syncBtn.Text = "Sync to Menu Color"
+    syncBtn.Visible = false
+    syncBtn.ZIndex = 25003
+    syncBtn.Parent = frame
+
+    syncBtn.MouseEnter:Connect(function() syncBtn.BackgroundColor3 = Colors.ToggleOnHover end)
+    syncBtn.MouseLeave:Connect(function() syncBtn.BackgroundColor3 = Colors.Accent end)
+    syncBtn.MouseButton1Click:Connect(function()
+        config.menuColor = { r = current.R, g = current.G, b = current.B }
+        saveConfig()
+        notifyEnabled("Menu color synced")
+    end)
+
+    local function closePicker()
+        pickerFrame.Visible = false
+        syncBtn.Visible = false
+        frame.Size = UDim2.new(1, 0, 0, 38)
+    end
     local function openPicker()
-        pickerFrame.Visible = true; frame.Size = UDim2.new(1, 0, 0, 232)
+        pickerFrame.Visible = true
+        syncBtn.Visible = true
+        frame.Size = UDim2.new(1, 0, 0, 276)
         updateWheelPicker(); updateDSlider(); updateGradient()
     end
     preview.MouseEnter:Connect(function() previewStroke.Color = Colors.Accent end)
@@ -565,7 +608,7 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     end)
     updateWheelPicker(); updateDSlider(); updateGradient()
 
-    -- RGB button (right of preview)
+    -- RGB button next to preview
     local rgbBtn = Instance.new("TextButton")
     rgbBtn.Name = "RGBButton"; rgbBtn.AutoButtonColor = false
     rgbBtn.BackgroundColor3 = Colors.Action; rgbBtn.BorderSizePixel = 0
@@ -597,26 +640,6 @@ local function buildColorPickerRow(parent, layoutOrder, initial, onChanged, labe
     rgbBtn.MouseButton1Click:Connect(function() toggleRGB() end)
     addTooltip(rgbBtn, "Synchronized RGB cycling")
 
-    -- SYNC button (writes current color to menu color)
-    local syncBtn = Instance.new("TextButton")
-    syncBtn.Name = "SyncButton"; syncBtn.AutoButtonColor = false
-    syncBtn.BackgroundColor3 = Colors.Action; syncBtn.BorderSizePixel = 0
-    syncBtn.AnchorPoint = Vector2.new(1, 0)
-    syncBtn.Position = UDim2.new(1, -76, 0, 5)
-    syncBtn.Size = UDim2.fromOffset(36, 28)
-    syncBtn.FontFace = UIFont; syncBtn.TextSize = 11
-    syncBtn.TextColor3 = Colors.Text; syncBtn.Text = "SYN"
-    syncBtn.ZIndex = 3; syncBtn.Parent = frame
-
-    syncBtn.MouseEnter:Connect(function() syncBtn.BackgroundColor3 = Colors.ActionHover end)
-    syncBtn.MouseLeave:Connect(function() syncBtn.BackgroundColor3 = Colors.Action end)
-    syncBtn.MouseButton1Click:Connect(function()
-        config.menuColor = { r = current.R, g = current.G, b = current.B }
-        saveConfig()
-        notifyEnabled("Menu color synced")
-    end)
-    addTooltip(syncBtn, "Sync this color to menu color")
-
     return frame
 end
 
@@ -625,7 +648,6 @@ local buttonData = {}
 local categoryFrames = {}
 local categoryStates = {}
 local Features = {}
-
 function Features.get(cat, name) return buttonData[cat] and buttonData[cat][name] end
 function Features.isEnabled(cat, name)
     local d = Features.get(cat, name)
@@ -635,15 +657,13 @@ end
 function Features.set(cat, name, enabled)
     local d = Features.get(cat, name)
     if not d then
-        ensureCategoryData(cat)
-        config.features[cat][name] = enabled and true or false
+        ensureCategoryData(cat); config.features[cat][name] = enabled and true or false
         saveConfig(); return false
     end
     local cur = d.getState and d.getState() or false
     if cur == enabled then return true end
     if d.toggle then d.toggle(); return true end
-    ensureCategoryData(cat)
-    config.features[cat][name] = enabled and true or false
+    ensureCategoryData(cat); config.features[cat][name] = enabled and true or false
     if d.button then d.button.BackgroundColor3 = enabled and Colors.Accent or Colors.Action end
     saveConfig(); return true
 end
@@ -668,7 +688,6 @@ local soundObj = Instance.new("Sound")
 soundObj.Name = "GUIClickSound"; soundObj.Volume = config.soundVolume; soundObj.Parent = screenGui
 local menuSoundObj = Instance.new("Sound")
 menuSoundObj.Name = "MenuSound"; menuSoundObj.Volume = config.soundVolume; menuSoundObj.Parent = screenGui
-
 local function playButtonSound()
     if not config.guiSounds then return end
     local id = config.soundId
@@ -741,24 +760,15 @@ end
 -- FAST FLAG helpers
 -- =========================================================================
 local function findLoaderFolder()
-    local preferred = workspace:FindFirstChild(FFLAGS_FOLDER_NAME)
+    local preferred = Workspace:FindFirstChild(FFLAGS_FOLDER_NAME)
     if preferred and (preferred:IsA("Folder") or preferred:IsA("Configuration")) then return preferred end
     local candidates = {"loader","Loader","FastFlags","fastflags","fflags","FFlags","Flags","flags"}
     for _, name in ipairs(candidates) do
-        local f = workspace:FindFirstChild(name)
+        local f = Workspace:FindFirstChild(name)
         if f and (f:IsA("Folder") or f:IsA("Configuration")) then return f end
-    end
-    for _, f in ipairs(workspace:GetChildren()) do
-        if f:IsA("Folder") then
-            for _, ch in ipairs(f:GetChildren()) do
-                local n = string.lower(ch.Name)
-                if string.find(n, "%.json", 1, true) then return f end
-            end
-        end
     end
     return nil
 end
-
 local function getFlagsFromFolder(folder)
     local list = {}
     if not folder then return list end
@@ -775,7 +785,6 @@ local function getFlagsFromFolder(folder)
     end
     return list
 end
-
 local function applyFastFlags(flags)
     if type(flags) ~= "table" then return 0 end
     local count = 0
@@ -789,7 +798,7 @@ local function applyFastFlags(flags)
 end
 
 -- =========================================================================
--- PROFILES
+-- PROFILES (robust)
 -- =========================================================================
 local function ensureProfilesFolder()
     if type(isfolder) == "function" and type(makefolder) == "function" then
@@ -797,36 +806,58 @@ local function ensureProfilesFolder()
     end
 end
 
+-- Returns list of {name, path} using the actual paths from listfiles
 local function listProfiles()
     if not canUseFiles() then return {} end
     ensureProfilesFolder()
-    local files = listfilesSafe(PROFILES_FOLDER)
+    local raw = listfilesSafe(PROFILES_FOLDER)
     local list = {}
-    for _, path in ipairs(files) do
-        local name = path:match("([^/\\]+)%.json$")
-        if name then table.insert(list, { name = name, path = path }) end
+    local seen = {}
+    for _, rawPath in ipairs(raw) do
+        local rp = tostring(rawPath)
+        -- Normalize separators for name matching
+        local norm = rp:gsub("\\", "/")
+        local name = norm:match("([^/]+)%.json$")
+        if name and not seen[name] then
+            seen[name] = true
+            -- Path candidates: original, normalized, or with folder prefix
+            local path = rp
+            if not isfile(path) then
+                local try1 = PROFILES_FOLDER .. "/" .. name .. ".json"
+                local try2 = PROFILES_FOLDER .. "\\" .. name .. ".json"
+                if isfile(try1) then path = try1
+                elseif isfile(try2) then path = try2 end
+            end
+            table.insert(list, { name = name, path = path })
+        end
     end
     table.sort(list, function(a, b) return string.lower(a.name) < string.lower(b.name) end)
     return list
 end
 
+local function findProfileEntry(name)
+    for _, entry in ipairs(listProfiles()) do
+        if entry.name == name then return entry end
+    end
+    return nil
+end
+
 local function readProfile(name)
     if not canUseFiles() then return nil end
-    -- Try both path formats
-    local paths = {
+    local entry = findProfileEntry(name)
+    if entry then
+        local ok, data = pcall(function() return HttpService:JSONDecode(readfile(entry.path)) end)
+        if ok and type(data) == "table" then return data end
+    end
+    -- Fallback candidates
+    local candidates = {
         PROFILES_FOLDER .. "/" .. name .. ".json",
-        PROFILES_FOLDER .. "\\" .. name .. ".json"
+        PROFILES_FOLDER .. "\\" .. name .. ".json",
+        name .. ".json",
     }
-    for _, path in ipairs(paths) do
+    for _, path in ipairs(candidates) do
         if isfile(path) then
             local ok, data = pcall(function() return HttpService:JSONDecode(readfile(path)) end)
-            if ok and type(data) == "table" then return data end
-        end
-    end
-    -- Fall back: use listfiles result
-    for _, entry in ipairs(listProfiles()) do
-        if entry.name == name then
-            local ok, data = pcall(function() return HttpService:JSONDecode(readfile(entry.path)) end)
             if ok and type(data) == "table" then return data end
         end
     end
@@ -836,54 +867,36 @@ end
 local function writeProfileData(name, data)
     if not canUseFiles() then return false end
     ensureProfilesFolder()
-    local paths = {
+    local candidates = {
         PROFILES_FOLDER .. "/" .. name .. ".json",
-        PROFILES_FOLDER .. "\\" .. name .. ".json"
+        PROFILES_FOLDER .. "\\" .. name .. ".json",
+        name .. ".json",
     }
-    for _, path in ipairs(paths) do
+    for _, path in ipairs(candidates) do
         local ok = pcall(function() writefile(path, HttpService:JSONEncode(data)) end)
-        if ok then return true end
+        if ok and isfile(path) then return true end
     end
     return false
 end
 
 local function deleteProfile(name)
     if not canUseFiles() then return false end
-    -- Use the actual path from listfiles
-    for _, entry in ipairs(listProfiles()) do
-        if entry.name == name then
-            local ok = delFileSafe(entry.path)
-            if ok then return true end
+    local entry = findProfileEntry(name)
+    if entry then
+        local ok = delFileSafe(entry.path)
+        if ok then return true end
+    end
+    local candidates = {
+        PROFILES_FOLDER .. "/" .. name .. ".json",
+        PROFILES_FOLDER .. "\\" .. name .. ".json",
+        name .. ".json",
+    }
+    for _, path in ipairs(candidates) do
+        if isfile(path) then
+            if delFileSafe(path) then return true end
         end
     end
-    -- Fallback: try constructed paths
-    local paths = {
-        PROFILES_FOLDER .. "/" .. name .. ".json",
-        PROFILES_FOLDER .. "\\" .. name .. ".json"
-    }
-    for _, path in ipairs(paths) do
-        if isfile(path) and delFileSafe(path) then return true end
-    end
     return false
-end
-
-local function applyProfileData(data)
-    if type(data) ~= "table" then return false end
-    if type(data.features) == "table" then config.features = data.features end
-    if type(data.settings) == "table" then config.settings = data.settings end
-    if type(data.keybinds) == "table" then config.keybinds = data.keybinds end
-    if type(data.tabs) == "table" then config.tabs = data.tabs end
-    if type(data.noxPosition) == "table" then config.noxPosition = data.noxPosition end
-    if type(data.searchPosition) == "table" then config.searchPosition = data.searchPosition end
-    if type(data.guiSounds) == "boolean" then config.guiSounds = data.guiSounds end
-    if type(data.menuSounds) == "boolean" then config.menuSounds = data.menuSounds end
-    if type(data.soundVolume) == "number" then config.soundVolume = data.soundVolume end
-    if type(data.soundId) == "string" then config.soundId = data.soundId end
-    if type(data.openSoundId) == "string" then config.openSoundId = data.openSoundId end
-    if type(data.closeSoundId) == "string" then config.closeSoundId = data.closeSoundId end
-    if type(data.guiKeybind) == "string" then config.guiKeybind = data.guiKeybind end
-    if type(data.menuColor) == "table" then config.menuColor = data.menuColor end
-    saveConfig(); return true
 end
 
 local function captureCurrentConfig()
@@ -910,6 +923,25 @@ local function saveProfile(name)
     return writeProfileData(name, data)
 end
 
+local function applyProfileData(data)
+    if type(data) ~= "table" then return false end
+    if type(data.features) == "table" then config.features = data.features end
+    if type(data.settings) == "table" then config.settings = data.settings end
+    if type(data.keybinds) == "table" then config.keybinds = data.keybinds end
+    if type(data.tabs) == "table" then config.tabs = data.tabs end
+    if type(data.noxPosition) == "table" then config.noxPosition = data.noxPosition end
+    if type(data.searchPosition) == "table" then config.searchPosition = data.searchPosition end
+    if type(data.guiSounds) == "boolean" then config.guiSounds = data.guiSounds end
+    if type(data.menuSounds) == "boolean" then config.menuSounds = data.menuSounds end
+    if type(data.soundVolume) == "number" then config.soundVolume = data.soundVolume end
+    if type(data.soundId) == "string" then config.soundId = data.soundId end
+    if type(data.openSoundId) == "string" then config.openSoundId = data.openSoundId end
+    if type(data.closeSoundId) == "string" then config.closeSoundId = data.closeSoundId end
+    if type(data.guiKeybind) == "string" then config.guiKeybind = data.guiKeybind end
+    if type(data.menuColor) == "table" then config.menuColor = data.menuColor end
+    saveConfig(); return true
+end
+
 -- =========================================================================
 -- Init state
 -- =========================================================================
@@ -929,9 +961,7 @@ local function setMenuVisible(visible)
     if fastFlagWindow then fastFlagWindow.Visible = visible and fastFlagWindow.Visible end
     if profilesWindow then profilesWindow.Visible = visible and profilesWindow.Visible end
     for _, card in pairs(categoryFrames) do
-        if card and card.Parent then
-            card.Visible = visible and categoryStates[card.Name]
-        end
+        if card and card.Parent then card.Visible = visible and categoryStates[card.Name] end
     end
     local searchFrame = screenGui:FindFirstChild("SearchBar")
     if searchFrame then searchFrame.Visible = visible end
@@ -985,7 +1015,7 @@ local function createFastFlagWindow()
     hint.TextSize = 12; hint.TextColor3 = Colors.MutedText
     hint.TextXAlignment = Enum.TextXAlignment.Left
     hint.TextTruncate = Enum.TextTruncate.AtEnd
-    hint.Text = "JSON files go in workspace → " .. FFLAGS_FOLDER_NAME
+    hint.Text = "Add StringValue JSONs to workspace → " .. FFLAGS_FOLDER_NAME
     hint.ZIndex = 45003; hint.Parent = window
 
     local content = Instance.new("ScrollingFrame")
@@ -1114,15 +1144,13 @@ local function createFastFlagWindow()
     refreshBtn.TextSize = 15; refreshBtn.TextColor3 = Colors.Text
     refreshBtn.Text = "Refresh"; refreshBtn.ZIndex = 45006; refreshBtn.Parent = window
 
-    refreshBtn.MouseButton1Click:Connect(function()
-        playButtonSound(); refreshList()
-    end)
-
+    refreshBtn.MouseButton1Click:Connect(function() playButtonSound(); refreshList() end)
     loadAllBtn.MouseButton1Click:Connect(function()
         playButtonSound()
         local total = 0
+        local folder = findLoaderFolder()
         for name, _ in pairs(selectedFlags) do
-            for _, e in ipairs(getFlagsFromFolder(findLoaderFolder())) do
+            for _, e in ipairs(getFlagsFromFolder(folder)) do
                 if e.name == name then total = total + applyFastFlags(e.flags); break end
             end
         end
@@ -1134,7 +1162,7 @@ local function createFastFlagWindow()
 end
 
 -- =========================================================================
--- PROFILES WINDOW
+-- PROFILES WINDOW (X delete, no rename)
 -- =========================================================================
 local function createProfilesWindow()
     if profilesWindow then profilesWindow.Visible = not profilesWindow.Visible; return end
@@ -1235,7 +1263,7 @@ local function createProfilesWindow()
         loadBtn.MouseButton1Click:Connect(function()
             playButtonSound()
             local data = readProfile(name)
-            if not data then notifyError("Failed to read profile"); return end
+            if not data then notifyError("Failed to read profile: " .. name); return end
             applyProfileData(data)
             notifyEnabled("Loaded profile: " .. name)
         end)
@@ -1266,9 +1294,7 @@ local function createProfilesWindow()
             e.LayoutOrder = 1; e.Parent = profileList
             return
         end
-        for i, entry in ipairs(list) do
-            makeProfileRow(entry, i)
-        end
+        for i, entry in ipairs(list) do makeProfileRow(entry, i) end
     end
 
     saveBtn.MouseButton1Click:Connect(function()
@@ -1288,7 +1314,7 @@ local function createProfilesWindow()
 end
 
 -- =========================================================================
--- SETTINGS WINDOW (with Menu Color picker)
+-- SETTINGS WINDOW (no Menu Color picker)
 -- =========================================================================
 local function createSettingsWindow()
     if settingsWindow then
@@ -1300,7 +1326,7 @@ local function createSettingsWindow()
     local window = Instance.new("Frame")
     window.Name = "SettingsWindow"
     window.BackgroundColor3 = Colors.Panel; window.BorderSizePixel = 0
-    window.Size = UDim2.fromOffset(320, 600)
+    window.Size = UDim2.fromOffset(300, 520)
     window.Position = UDim2.fromOffset(winX, winY)
     window.ClipsDescendants = true; window.ZIndex = 40000; window.Parent = screenGui
 
@@ -1319,9 +1345,7 @@ local function createSettingsWindow()
     closeButton.Text = "✕"; closeButton.ZIndex = 40002; closeButton.Parent = header
     closeButton.MouseEnter:Connect(function() closeButton.TextColor3 = Colors.Text end)
     closeButton.MouseLeave:Connect(function() closeButton.TextColor3 = Colors.MutedText end)
-    closeButton.MouseButton1Click:Connect(function()
-        window.Visible = false; settingsVisible = false
-    end)
+    closeButton.MouseButton1Click:Connect(function() window.Visible = false; settingsVisible = false end)
     makeDraggable(window, header, "settingsWindow", false)
 
     local content = Instance.new("ScrollingFrame")
@@ -1473,25 +1497,14 @@ local function createSettingsWindow()
         setSetting("noxvape", "blur", "enabled", value); updateBlur()
     end, 10, "Blur background when GUI is open")
 
-    -- Menu Color picker
-    buildColorPickerRow(
-        content, 11,
-        Color3.new(config.menuColor.r, config.menuColor.g, config.menuColor.b),
-        function(color)
-            config.menuColor = { r = color.R, g = color.G, b = color.B }
-            saveConfig()
-        end,
-        "Menu Color"
-    )
+    addLabel("Managers", 11)
+    addButton("Fast Flag Manager", function() createFastFlagWindow() end, 12, false)
+    addButton("Profiles", function() createProfilesWindow() end, 13, false)
 
-    addLabel("Managers", 12)
-    addButton("Fast Flag Manager", function() createFastFlagWindow() end, 13, false)
-    addButton("Profiles", function() createProfilesWindow() end, 14, false)
-
-    addLabel("Other", 15)
+    addLabel("Other", 14)
     local sdFrame = Instance.new("Frame")
     sdFrame.BackgroundTransparency = 1; sdFrame.Size = UDim2.new(1, 0, 0, 42)
-    sdFrame.LayoutOrder = 16; sdFrame.Parent = content
+    sdFrame.LayoutOrder = 15; sdFrame.Parent = content
     local sd = Instance.new("TextButton")
     sd.AutoButtonColor = false; sd.BackgroundColor3 = Colors.Action
     sd.BorderSizePixel = 0; sd.Size = UDim2.new(1, 0, 1, 0)
@@ -1537,12 +1550,12 @@ local function init()
         hdr.Size = UDim2.new(1, 0, 0, 46); hdr.Text = ""
         hdr.ZIndex = 11020 + ci; hdr.Parent = card
 
-        local cl = Instance.new("TextLabel")
-        cl.BackgroundTransparency = 1; cl.Size = UDim2.new(1, 0, 1, 0)
-        cl.FontFace = UIFont; cl.TextSize = 18; cl.TextColor3 = Colors.Text
-        cl.TextXAlignment = Enum.TextXAlignment.Center
-        cl.TextYAlignment = Enum.TextYAlignment.Center
-        cl.Text = catName; cl.ZIndex = 11021 + ci; cl.Parent = hdr
+        local cl2 = Instance.new("TextLabel")
+        cl2.BackgroundTransparency = 1; cl2.Size = UDim2.new(1, 0, 1, 0)
+        cl2.FontFace = UIFont; cl2.TextSize = 18; cl2.TextColor3 = Colors.Text
+        cl2.TextXAlignment = Enum.TextXAlignment.Center
+        cl2.TextYAlignment = Enum.TextYAlignment.Center
+        cl2.Text = catName; cl2.ZIndex = 11021 + ci; cl2.Parent = hdr
 
         makeDraggable(card, hdr, catName, false)
         hdr.MouseEnter:Connect(function() tw(hdr, { BackgroundColor3 = Colors.PanelHover }, 0.08) end)
@@ -1604,11 +1617,8 @@ local function init()
 
             local hovering = false
             local function refreshColor()
-                if isToggle then
-                    button.BackgroundColor3 = currentState and Colors.Accent or Colors.Action
-                else
-                    button.BackgroundColor3 = hovering and Colors.ActionHover or Colors.Action
-                end
+                if isToggle then button.BackgroundColor3 = currentState and Colors.Accent or Colors.Action
+                else button.BackgroundColor3 = hovering and Colors.ActionHover or Colors.Action end
             end
             button.MouseEnter:Connect(function() hovering = true; refreshColor() end)
             button.MouseLeave:Connect(function() hovering = false; refreshColor() end)
@@ -1616,14 +1626,13 @@ local function init()
 
             local function performToggle()
                 if not isToggle then
-                    local ok, result = pcall(action)
-                    if not ok then warn("[NoxLib]", result) end
+                    local ok = pcall(action)
+                    if not ok then warn("[NoxLib] action failed") end
                     return
                 end
                 local newState = not currentState
                 local ok, result = pcall(action, newState)
                 local success = ok and result ~= false
-                if not ok then warn("[NoxLib]", result) end
                 if success then
                     currentState = newState
                     config.features[catName][itemName] = currentState
@@ -1640,7 +1649,6 @@ local function init()
                 hideTooltip(); settingsFrame.Visible = not settingsFrame.Visible
             end)
 
-            -- Keybind row
             local kbr = Instance.new("Frame")
             kbr.BackgroundTransparency = 1; kbr.Size = UDim2.new(1, 0, 0, 32)
             kbr.LayoutOrder = 1; kbr.Parent = settingsFrame
@@ -1673,7 +1681,6 @@ local function init()
                 kbb.BackgroundColor3 = Colors.Accent
             end)
 
-            -- Settings entries
             if type(extraSettings) == "table" then
                 for si, setting in ipairs(extraSettings) do
                     if type(setting) ~= "table" then continue end
@@ -1690,7 +1697,6 @@ local function init()
                         default = math.clamp(default, min, max)
                         local step = tonumber(setting.step) or 1; if step <= 0 then step = 1 end
                         local current = tonumber(getSetting(catName, itemName, sk, default)) or default
-
                         local function roundToStep(v)
                             v = math.clamp(v, min, max)
                             local s = math.floor(((v - min) / step) + 0.5)
@@ -1698,14 +1704,12 @@ local function init()
                             return math.clamp(r, min, max)
                         end
                         current = roundToStep(current)
-
                         local function fmt(v)
                             if step >= 1 and step == math.floor(step) then return tostring(math.floor(v + 0.5)) end
                             local d = 0; local t = step
                             while d < 10 and math.abs(t - math.floor(t)) > 0.000001 do t *= 10; d += 1 end
                             return string.format("%." .. d .. "f", v)
                         end
-
                         local f = Instance.new("Frame")
                         f.BackgroundTransparency = 1; f.Size = UDim2.new(1, 0, 0, 48)
                         f.LayoutOrder = order; f.Parent = settingsFrame
@@ -1714,11 +1718,9 @@ local function init()
                         l.FontFace = UIFont; l.TextSize = 14; l.TextColor3 = Colors.Text
                         l.TextXAlignment = Enum.TextXAlignment.Left
                         l.Text = sn .. " (" .. fmt(current) .. ")"; l.Parent = f
-
                         local sb = Instance.new("Frame")
                         sb.BackgroundColor3 = Colors.ToggleOff; sb.BorderSizePixel = 0
-                        sb.Position = UDim2.fromOffset(0, 24); sb.Size = UDim2.new(1, 0, 0, 14)
-                        sb.Parent = f
+                        sb.Position = UDim2.fromOffset(0, 24); sb.Size = UDim2.new(1, 0, 0, 14); sb.Parent = f
                         local range = max - min
                         local pct = range == 0 and 0 or math.clamp((current - min) / range, 0, 1)
                         local fill = Instance.new("Frame")
@@ -1729,7 +1731,6 @@ local function init()
                         knob.BorderSizePixel = 0; knob.AnchorPoint = Vector2.new(0.5, 0.5)
                         knob.Position = UDim2.new(pct, 0, 0.5, 0)
                         knob.Size = UDim2.fromOffset(12, 16); knob.Text = ""; knob.Parent = sb
-
                         local dragging = false
                         local function upd(v)
                             v = roundToStep(v)
@@ -1787,386 +1788,4 @@ local function init()
                         l.TextXAlignment = Enum.TextXAlignment.Left; l.Text = sn; l.Parent = f
                         local dd = Instance.new("TextButton")
                         dd.AutoButtonColor = false; dd.BackgroundColor3 = Colors.Action
-                        dd.BorderSizePixel = 0; dd.AnchorPoint = Vector2.new(1, 0)
-                        dd.Position = UDim2.new(1, 0, 0, 0); dd.Size = UDim2.fromOffset(120, 38)
-                        dd.FontFace = UIFont; dd.TextSize = 15; dd.TextColor3 = Colors.Text
-                        dd.TextTruncate = Enum.TextTruncate.AtEnd
-                        dd.Text = tostring(current); dd.ZIndex = 20050; dd.Parent = f
-                        local dc = Instance.new("Frame")
-                        dc.Name = "DropdownOptions"; dc.BackgroundColor3 = Colors.Setting
-                        dc.BorderSizePixel = 0; dc.Size = UDim2.new(1, 0, 0, 0)
-                        dc.AutomaticSize = Enum.AutomaticSize.Y; dc.LayoutOrder = order + 100
-                        dc.Visible = false; dc.ZIndex = 20051; dc.Parent = settingsFrame
-                        local ol = Instance.new("UIListLayout")
-                        ol.SortOrder = Enum.SortOrder.LayoutOrder; ol.Padding = UDim.new(0, 2); ol.Parent = dc
-                        local function closeDd() dc.Visible = false; dd.BackgroundColor3 = Colors.Action end
-                        for oi, opt in ipairs(options) do
-                            local ob = Instance.new("TextButton")
-                            ob.AutoButtonColor = false; ob.BackgroundColor3 = Colors.Action
-                            ob.BorderSizePixel = 0; ob.Size = UDim2.new(1, 0, 0, 34)
-                            ob.FontFace = UIFont; ob.TextSize = 15; ob.TextColor3 = Colors.Text
-                            ob.Text = tostring(opt); ob.LayoutOrder = oi
-                            ob.ZIndex = 20052; ob.Parent = dc
-                            ob.MouseEnter:Connect(function() ob.BackgroundColor3 = Colors.ActionHover end)
-                            ob.MouseLeave:Connect(function() ob.BackgroundColor3 = Colors.Action end)
-                            ob.MouseButton1Click:Connect(function()
-                                current = opt; dd.Text = tostring(current)
-                                setSetting(catName, itemName, sk, current)
-                                safeCall(setting.onChanged or setting.action, current)
-                                closeDd()
-                            end)
-                        end
-                        dd.MouseEnter:Connect(function() dd.BackgroundColor3 = Colors.ActionHover end)
-                        dd.MouseLeave:Connect(function()
-                            if not dc.Visible then dd.BackgroundColor3 = Colors.Action end
-                        end)
-                        dd.MouseButton1Click:Connect(function()
-                            dc.Visible = not dc.Visible
-                            dd.BackgroundColor3 = dc.Visible and Colors.ActionHover or Colors.Action
-                        end)
-
-                    elseif st == "checkbox" then
-                        local default = setting.default == true
-                        local current = getSetting(catName, itemName, sk, default) == true
-                        local f = Instance.new("Frame")
-                        f.BackgroundTransparency = 1; f.Size = UDim2.new(1, 0, 0, 38)
-                        f.LayoutOrder = order; f.Parent = settingsFrame
-                        local ck = Instance.new("TextButton")
-                        ck.AutoButtonColor = false
-                        ck.BackgroundColor3 = current and Colors.ToggleOn or Colors.ToggleOff
-                        ck.BorderSizePixel = 0; ck.Position = UDim2.fromOffset(6, 4)
-                        ck.Size = UDim2.fromOffset(30, 30); ck.Text = ""; ck.Parent = f
-                        local l = Instance.new("TextLabel")
-                        l.BackgroundTransparency = 1; l.Position = UDim2.fromOffset(48, 0)
-                        l.Size = UDim2.new(1, -48, 1, 0); l.FontFace = UIFont
-                        l.TextSize = 16; l.TextColor3 = Colors.Text
-                        l.TextXAlignment = Enum.TextXAlignment.Left
-                        l.TextTruncate = Enum.TextTruncate.AtEnd
-                        l.Text = sn; l.Parent = f
-                        local function upd() ck.BackgroundColor3 = current and Colors.ToggleOn or Colors.ToggleOff end
-                        ck.MouseEnter:Connect(function()
-                            ck.BackgroundColor3 = current and Colors.ToggleOnHover or Colors.ToggleOffHover
-                        end)
-                        ck.MouseLeave:Connect(function() upd() end)
-                        ck.MouseButton1Click:Connect(function()
-                            current = not current; upd()
-                            setSetting(catName, itemName, sk, current)
-                            safeCall(setting.onChanged or setting.action, current)
-                        end)
-
-                    elseif st == "textbox" then
-                        local f = Instance.new("Frame")
-                        f.BackgroundTransparency = 1; f.Size = UDim2.new(1, 0, 0, 34)
-                        f.LayoutOrder = order; f.Parent = settingsFrame
-                        local l = Instance.new("TextLabel")
-                        l.BackgroundTransparency = 1; l.Size = UDim2.new(0.4, 0, 1, 0)
-                        l.FontFace = UIFont; l.TextSize = 14; l.TextColor3 = Colors.Text
-                        l.TextXAlignment = Enum.TextXAlignment.Left; l.Text = sn; l.Parent = f
-                        local tb = Instance.new("TextBox")
-                        tb.BackgroundColor3 = Colors.ToggleOff; tb.BorderSizePixel = 0
-                        tb.AnchorPoint = Vector2.new(1, 0.5); tb.Position = UDim2.new(1, 0, 0.5, 0)
-                        tb.Size = UDim2.fromOffset(140, 28); tb.FontFace = UIFont
-                        tb.TextSize = 14; tb.TextColor3 = Colors.Text
-                        tb.Text = tostring(getSetting(catName, itemName, sk, setting.default or ""))
-                        tb.ClearTextOnFocus = false; tb.Parent = f
-                        tb.FocusLost:Connect(function()
-                            setSetting(catName, itemName, sk, tb.Text)
-                            safeCall(setting.onChanged or setting.action, tb.Text)
-                        end)
-                    end
-                end
-            end
-
-            buttonData[catName] = buttonData[catName] or {}
-            buttonData[catName][itemName] = {
-                button = button, wrapper = wrapper, settings = settingsFrame,
-                isToggle = isToggle, keybindButton = kbb, action = action,
-                getState = function() return currentState end,
-                toggle = performToggle,
-                setState = function(state, skipSave)
-                    currentState = state and true or false
-                    config.features[catName][itemName] = currentState
-                    refreshColor()
-                    if not skipSave then saveConfig() end
-                end
-            }
-
-            if isToggle and currentState then
-                local ok, result = pcall(action, true)
-                if not ok or result == false then
-                    currentState = false
-                    config.features[catName][itemName] = false
-                    refreshColor()
-                    notifyWarning(itemName .. " disabled (condition not met)")
-                    saveConfig()
-                end
-            end
-        end
-    end
-
-    -- Tab panel
-    local nx = tonumber(config.noxPosition.x) or 18
-    local ny = tonumber(config.noxPosition.y) or 75
-    tabPanel = Instance.new("Frame")
-    tabPanel.Name = "noxvape"; tabPanel.BackgroundColor3 = Colors.Panel
-    tabPanel.BorderSizePixel = 0; tabPanel.Size = UDim2.fromOffset(210, 560)
-    tabPanel.Position = UDim2.fromOffset(nx, ny)
-    tabPanel.ClipsDescendants = true; tabPanel.ZIndex = 20000; tabPanel.Parent = screenGui
-
-    local tabHeader = Instance.new("TextButton")
-    tabHeader.Name = "Header"; tabHeader.AutoButtonColor = false
-    tabHeader.BackgroundColor3 = Colors.Panel; tabHeader.BorderSizePixel = 0
-    tabHeader.Size = UDim2.new(1, 0, 0, 46); tabHeader.Text = ""
-    tabHeader.ZIndex = 20001; tabHeader.Parent = tabPanel
-
-    local logo = Instance.new("ImageLabel")
-    logo.Name = "Logo"; logo.BackgroundTransparency = 1
-    logo.AnchorPoint = Vector2.new(0.5, 0.5); logo.Position = UDim2.fromScale(0.5, 0.5)
-    logo.Size = UDim2.fromScale(1.4, 1.4); logo.ScaleType = Enum.ScaleType.Fit
-    logo.ZIndex = 20002; logo.Parent = tabHeader
-
-    task.spawn(function()
-        if type(request) == "function" and type(writefile) == "function" then
-            local need = true
-            if type(isfile) == "function" then need = not isfile(LOGO_FILE) end
-            if need then
-                pcall(function()
-                    local r = request({ Url = LOGO_URL, Method = "GET" })
-                    if r and r.Success and r.Body then writefile(LOGO_FILE, r.Body) end
-                end)
-            end
-        end
-        task.wait(0.12)
-        if type(isfile) == "function" and isfile(LOGO_FILE) then
-            local ok, a = pcall(function() return getCustomAsset(LOGO_FILE) end)
-            if ok and a then logo.Image = a end
-        end
-    end)
-
-    makeDraggable(tabPanel, tabHeader, "noxvape", true)
-
-    local tabScroll = Instance.new("Frame")
-    tabScroll.Name = "Tabs"; tabScroll.BackgroundTransparency = 1
-    tabScroll.Position = UDim2.fromOffset(8, 54)
-    tabScroll.Size = UDim2.new(1, -16, 0, 450); tabScroll.ZIndex = 20004; tabScroll.Parent = tabPanel
-
-    local tl = Instance.new("UIListLayout")
-    tl.SortOrder = Enum.SortOrder.LayoutOrder; tl.Padding = UDim.new(0, 3); tl.Parent = tabScroll
-
-    for i, catDef in ipairs(_categories) do
-        local cn = catDef.name
-        local tb = Instance.new("TextButton")
-        tb.Name = cn; tb.LayoutOrder = i; tb.AutoButtonColor = false
-        tb.BackgroundColor3 = Colors.Action; tb.BorderSizePixel = 0
-        tb.Size = UDim2.new(1, 0, 0, 36); tb.FontFace = UIFont
-        tb.TextSize = 17; tb.TextColor3 = Colors.Text; tb.Text = cn
-        tb.TextXAlignment = Enum.TextXAlignment.Center
-        tb.ZIndex = 20005; tb.Parent = tabScroll
-        tb.MouseEnter:Connect(function() tw(tb, { BackgroundColor3 = Colors.ActionHover }, 0.08) end)
-        tb.MouseLeave:Connect(function() tw(tb, { BackgroundColor3 = Colors.Action }, 0.08) end)
-        tb.MouseButton1Click:Connect(function()
-            playButtonSound()
-            local c = categoryFrames[cn]
-            if not c or not c.Parent then return end
-            categoryStates[cn] = not categoryStates[cn]
-            c.Visible = categoryStates[cn]
-            config.tabs[cn] = categoryStates[cn]
-            saveConfig()
-        end)
-        addTooltip(tb, "Toggle " .. cn .. " tab")
-    end
-
-    -- Settings button
-    local sc = Instance.new("Frame")
-    sc.Name = "SettingsButtonContainer"; sc.BackgroundTransparency = 1
-    sc.BorderSizePixel = 0; sc.Position = UDim2.new(1, -48, 1, -48)
-    sc.Size = UDim2.fromOffset(40, 40); sc.ZIndex = 20015; sc.Parent = tabPanel
-
-    local sb = Instance.new("TextButton")
-    sb.Name = "SettingsButton"; sb.AutoButtonColor = false
-    sb.BackgroundTransparency = 1; sb.BorderSizePixel = 0
-    sb.Size = UDim2.fromScale(1, 1); sb.Text = ""
-    sb.ZIndex = 20016; sb.Parent = sc
-
-    local si = Instance.new("ImageLabel")
-    si.Name = "SettingsIcon"; si.BackgroundTransparency = 1
-    si.AnchorPoint = Vector2.new(0.5, 0.5); si.Position = UDim2.fromScale(0.5, 0.5)
-    si.Size = UDim2.fromScale(1, 1); si.ScaleType = Enum.ScaleType.Fit
-    si.ImageColor3 = Color3.fromRGB(255, 255, 255); si.ZIndex = 20017; si.Parent = sb
-
-    task.spawn(function()
-        if type(request) == "function" and type(writefile) == "function" then
-            pcall(function()
-                local r = request({ Url = SETTINGS_ICON_URL, Method = "GET" })
-                if r and r.Success and r.Body then
-                    writefile("nox_settings_icon.png", r.Body)
-                    local a = getCustomAsset("nox_settings_icon.png")
-                    if a then si.Image = a end
-                end
-            end)
-        end
-    end)
-    if si.Image == "" then si.Image = "rbxassetid://6034654127" end
-    sb.MouseEnter:Connect(function() tw(si, { ImageColor3 = Color3.fromRGB(180, 180, 180) }, 0.1) end)
-    sb.MouseLeave:Connect(function() tw(si, { ImageColor3 = Color3.fromRGB(255, 255, 255) }, 0.1) end)
-    addTooltip(sb, "Open GUI settings")
-    sb.MouseButton1Click:Connect(function() playButtonSound(); createSettingsWindow() end)
-
-    -- Search bar (NO toggle button)
-    local sx = tonumber(config.searchPosition.x) or 300
-    local sy = tonumber(config.searchPosition.y) or 50
-    local searchFrame = Instance.new("Frame")
-    searchFrame.Name = "SearchBar"; searchFrame.BackgroundColor3 = Colors.Panel
-    searchFrame.BorderSizePixel = 0
-    searchFrame.Size = UDim2.fromOffset(220, 40)
-    searchFrame.Position = UDim2.fromOffset(sx, sy)
-    searchFrame.ZIndex = 30000; searchFrame.Parent = screenGui
-
-    local sh = Instance.new("TextButton")
-    sh.AutoButtonColor = false; sh.BackgroundColor3 = Colors.Panel
-    sh.BorderSizePixel = 0; sh.Size = UDim2.new(1, 0, 0, 40)
-    sh.Text = ""; sh.ZIndex = 30001; sh.Parent = searchFrame
-    makeDraggable(searchFrame, sh, "searchBar", false)
-
-    local searchBox = Instance.new("TextBox")
-    searchBox.BackgroundColor3 = Colors.ToggleOff; searchBox.BorderSizePixel = 0
-    searchBox.Position = UDim2.fromOffset(8, 5)
-    searchBox.Size = UDim2.new(1, -16, 1, -10)
-    searchBox.FontFace = UIFont; searchBox.TextSize = 18
-    searchBox.TextColor3 = Colors.Text
-    searchBox.PlaceholderText = "Search features..."
-    searchBox.PlaceholderColor3 = Colors.MutedText
-    searchBox.Text = ""; searchBox.ZIndex = 30002; searchBox.Parent = searchFrame
-
-    filterButtons = function(query)
-        if not tabPanel.Visible then return end
-        query = string.lower(query)
-        for cn, card in pairs(categoryFrames) do
-            if card and card.Parent then
-                local scr = card:FindFirstChild("Buttons")
-                if scr then
-                    local anyV = false
-                    for _, ch in ipairs(scr:GetChildren()) do
-                        if ch:IsA("Frame") and ch.Name:match("_Wrapper$") then
-                            local b = ch:FindFirstChildOfClass("TextButton")
-                            if b then
-                                local mn = b:FindFirstChild("ModuleName")
-                                local text = (mn and mn.Text ~= "") and mn.Text or b.Name
-                                local v = query == "" or string.find(string.lower(text), query, 1, true) ~= nil
-                                ch.Visible = v
-                                if v then anyV = true end
-                            end
-                        end
-                    end
-                    card.Visible = (query ~= "" and anyV) or (query == "" and categoryStates[cn])
-                end
-            end
-        end
-    end
-
-    searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-        filterButtons(searchBox.Text)
-    end)
-
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        local key = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode.Name or nil
-        if not key then return end
-        if waitingForBind then
-            if key == "Backspace" or key == "Escape" then
-                config.keybinds[waitingForBind.category][waitingForBind.feature] = nil
-                waitingForBind.button.Text = "NONE"
-            else
-                local used = false
-                for cat, feats in pairs(config.keybinds) do
-                    if type(feats) == "table" then
-                        for f, b in pairs(feats) do
-                            if b == key and not (cat == waitingForBind.category and f == waitingForBind.feature) then
-                                used = true; break
-                            end
-                        end
-                    end
-                    if used then break end
-                end
-                if used then
-                    notifyError("Key already bound!")
-                    waitingForBind.button.Text = getKeybind(waitingForBind.category, waitingForBind.feature) or "NONE"
-                else
-                    config.keybinds[waitingForBind.category][waitingForBind.feature] = key
-                    waitingForBind.button.Text = key
-                end
-            end
-            waitingForBind.button.BackgroundColor3 = Colors.Action
-            waitingForBind = nil
-            saveConfig()
-            return
-        end
-        if gameProcessed then return end
-        if key == config.guiKeybind then
-            hideTooltip(); setMenuVisible(not tabPanel.Visible); return
-        end
-        if UserInputService:GetFocusedTextBox() then return end
-        for cn, feats in pairs(config.keybinds) do
-            if type(feats) ~= "table" then continue end
-            for fn, b in pairs(feats) do
-                if b == key then
-                    local d = buttonData[cn] and buttonData[cn][fn]
-                    if d and d.toggle then d.toggle() end
-                    break
-                end
-            end
-        end
-    end)
-
-    playerGui.ChildAdded:Connect(function(child)
-        if not otherGuisDisabled then return end
-        if child:IsA("ScreenGui") and child ~= screenGui then
-            task.defer(function()
-                if otherGuisDisabled and child.Parent then
-                    disabledGuiStates[child] = child.Enabled
-                    child.Enabled = false
-                end
-            end)
-        end
-    end)
-
-    setMenuVisible(tabPanel.Visible)
-    saveConfig()
-end
-
--- Public API
-local NoxLib = {}
-function NoxLib.addCategory(name)
-    assert(type(name) == "string" and name ~= "", "NoxLib.addCategory: name must be a non-empty string")
-    if _categoryMap[name] then return end
-    local c = { name = name, items = {} }
-    table.insert(_categories, c)
-    _categoryMap[name] = c
-end
-function NoxLib.addButton(categoryName, opts)
-    assert(type(categoryName) == "string", "NoxLib.addButton: categoryName must be string")
-    assert(type(opts) == "table", "NoxLib.addButton: opts must be table")
-    assert(type(opts.name) == "string" and opts.name ~= "", "NoxLib.addButton: opts.name required")
-    if not _categoryMap[categoryName] then NoxLib.addCategory(categoryName) end
-    local c = _categoryMap[categoryName]
-    table.insert(c.items, {
-        name = opts.name,
-        toggle = opts.toggle ~= false,
-        description = opts.description or "",
-        action = opts.action or function() end,
-        settings = opts.settings
-    })
-end
-function NoxLib.notify(msg, kind) createNotification(msg, kind or "enabled") end
-function NoxLib.notifyEnabled(msg) notifyEnabled(msg) end
-function NoxLib.notifyWarning(msg) notifyWarning(msg) end
-function NoxLib.notifyError(msg) notifyError(msg) end
-NoxLib.Features = Features
-NoxLib.getSetting = getSetting
-NoxLib.setSetting = setSetting
-NoxLib.saveConfig = saveConfig
-NoxLib.setMenuVisible = setMenuVisible
-NoxLib.Colors = Colors
-function NoxLib.init() init() end
-_G.NoxLib = NoxLib
-return NoxLib
+                        dd.BorderSizePixel = 0; dd.Anchor
